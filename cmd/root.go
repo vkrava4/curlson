@@ -31,10 +31,10 @@ var rootCmd = &cobra.Command{
 	Short: "An advanced version of your favourite cURL",
 	Long: `An advanced command-line version of libcurl project which enables:
 
-	- templating
-	- multithreading
-	- performance monitoring 
-	- reporting 
+	- Document and request templating
+	- Multithreading
+	- Performance monitoring / Statistics 
+	- Results reporting 
 	- and other features ... 
 
 

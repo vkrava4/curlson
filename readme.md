@@ -1,4 +1,4 @@
-![>curlson_](docs/image.png)
+![>curlson_](docs/logo_large.png)
 
 An advanced version of your favourite cURL
 

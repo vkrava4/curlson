@@ -29,13 +29,16 @@ var cfgFile string
 var rootCmd = &cobra.Command{
 	Use:   "curlson",
 	Short: "An advanced version of your favourite cURL",
-	Long: `An advanced command-line version of libcurl project which enables:
+	Long: `
+A command-line project which is designed to perform thousands of concurrent requests with specified data based on user-templates or static values to destination address with handy statistic reports and tracing options.
 
+Features:
 	- Document and request templating
 	- Multithreading
-	- Performance monitoring / Statistics 
-	- Results reporting 
-	- and other features ... 
+	- Performance monitoring / Statistics
+	- Results reporting
+	- Tracing
+	- and many others ... 
 
 
 Visit: https://github.com/vkrava4/curlson for additional information`,

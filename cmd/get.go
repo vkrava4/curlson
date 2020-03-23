@@ -17,7 +17,9 @@ limitations under the License.
 package cmd
 
 import (
+	"curlson/logutil"
 	"fmt"
+	"github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
@@ -31,6 +33,8 @@ import (
 var count int
 var sleepMs int
 var threads int
+var persistLogs = false
+var loggingSupported = false
 
 var getCmd = &cobra.Command{
 	Use:   "get <URL>",
@@ -46,12 +50,15 @@ var yellowColor = color.New(color.FgYellow)
 var greenColor = color.New(color.FgGreen)
 var redColor = color.New(color.FgRed)
 
+var log = logrus.New()
+
 func init() {
 	rootCmd.AddCommand(getCmd)
 
 	getCmd.Flags().IntVarP(&threads, "threads", "t", 1, "A number of concurrent GET requests")
 	getCmd.Flags().IntVarP(&count, "count", "c", 1, "A number of GET requests per single thread")
 	getCmd.Flags().IntVarP(&sleepMs, "sleep", "s", 0, "A delay in millis after each GET requests. Doesn't impact performance report results if set (default 0)")
+	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "Defines whether execution log files will be persisted or automatically cleaned up")
 }
 
 func ValidateInput() {
@@ -75,16 +82,24 @@ func ValidateInput() {
 }
 
 func Run(url string) {
-	var waitGroup sync.WaitGroup
-	var executionResults = make([]int, threads)
+	var supported, logFile = logutil.SetupLogs(log, &persistLogs)
+	loggingSupported = supported
+	defer logutil.ShutdownLogs(logFile, &persistLogs)
 
+	logutil.InfoLog(fmt.Sprintf("Setting up GET execution to URL address %s with threads = %d, amount of requests = %d, sleep millis timeout = %d", url, threads, count, sleepMs), log, &supported)
+
+	var executionResults = make([]int, threads)
+	var waitGroup sync.WaitGroup
 	var multiProgress = mpb.New(mpb.WithWaitGroup(&waitGroup))
 	waitGroup.Add(threads)
 
 	for i := 0; i < len(executionResults); i++ {
+		logutil.InfoLog(fmt.Sprintf("Setting up new thread with id: %d", i), log, &loggingSupported)
 		go ThreadStart(i, &url, executionResults, multiProgress, &waitGroup)
+		logutil.InfoLog(fmt.Sprintf("Thread with id: %d successfully started", i), log, &loggingSupported)
 	}
-	//AwaitForCompletion(executionResults)
+
+	MonitorActivity(executionResults)
 	multiProgress.Wait()
 
 }
@@ -104,15 +119,28 @@ func ThreadStart(threadId int, url *string, executionResults []int, multiProgres
 			),
 		),
 	)
-
 	defer waitGroup.Done()
+
 	for i := 0; i < count; i++ {
 		var requestStartTime = time.Now()
-		var _, _ = http.Get(*url)
+		var getResponse, getResponseErr = http.Get(*url)
+
+		if getResponseErr == nil {
+			if getResponse.StatusCode >= 200 && getResponse.StatusCode <= 299 {
+				logutil.InfoLog(fmt.Sprintf("Successfully received HTTP GET responce from address '%s' with body %#v", *url, getResponse), log, &loggingSupported)
+			} else {
+				logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with body %#v", getResponse.StatusCode, *url, getResponse), log, &loggingSupported)
+			}
+		} else {
+			logutil.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", *url, getResponseErr.Error()), log, &loggingSupported)
+		}
+
 		progress.Increment(time.Since(requestStartTime))
 
 		if sleepMs > 0 {
+			logutil.InfoLog(fmt.Sprintf("Sleeping thread with id: %d for %d millis before the next itteration", threadId, sleepMs), log, &loggingSupported)
 			time.Sleep(time.Millisecond * time.Duration(sleepMs))
+			logutil.InfoLog(fmt.Sprintf("Resumed thread with id: %d after sleeping for %d millis", threadId, sleepMs), log, &loggingSupported)
 		}
 	}
 

@@ -59,7 +59,7 @@ func init() {
 	getCmd.Flags().IntVarP(&threads, "threads", "t", 1, "A number of concurrent GET requests")
 	getCmd.Flags().IntVarP(&count, "count", "c", 1, "A number of GET requests per single thread")
 	getCmd.Flags().IntVarP(&sleepMs, "sleep", "s", 0, "A delay in millis after each GET requests. Doesn't impact performance report results if set (default 0)")
-	getCmd.Flags().IntVarP(&duration, "duration", "d", 0, "A maximum duration in seconds by reaching which requests execution will be terminated regardless of a 'count' flag value. When the value set to '0' this flag is ignored")
+	getCmd.Flags().IntVarP(&duration, "duration", "d", 0, "A maximum duration in seconds by reaching which requests execution will be terminated regardless of a 'count' flag value. When the value set to '0' this flag is ignored (default 0)")
 	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "A property which defines whether execution log files will be persisted or automatically cleaned up")
 }
 

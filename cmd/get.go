@@ -33,6 +33,7 @@ import (
 var count int
 var sleepMs int
 var threads int
+var duration int
 var persistLogs = false
 var loggingSupported = false
 
@@ -58,7 +59,8 @@ func init() {
 	getCmd.Flags().IntVarP(&threads, "threads", "t", 1, "A number of concurrent GET requests")
 	getCmd.Flags().IntVarP(&count, "count", "c", 1, "A number of GET requests per single thread")
 	getCmd.Flags().IntVarP(&sleepMs, "sleep", "s", 0, "A delay in millis after each GET requests. Doesn't impact performance report results if set (default 0)")
-	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "Defines whether execution log files will be persisted or automatically cleaned up")
+	getCmd.Flags().IntVarP(&duration, "duration", "d", 0, "A maximum duration in seconds by reaching which requests execution will be terminated regardless of a 'count' flag value. When the value set to '0' this flag is ignored")
+	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "A property which defines whether execution log files will be persisted or automatically cleaned up")
 }
 
 func ValidateInput() {
@@ -73,6 +75,10 @@ func ValidateInput() {
 
 	if sleepMs < 0 {
 		validationResults = fmt.Sprintf(validationResults+"\n - The delay in millis per request has to be grater or equal to 0. Currently it's: '%d' millis", sleepMs)
+	}
+
+	if duration < 0 {
+		validationResults = fmt.Sprintf(validationResults+"\n - The maximum execution duration in seconds has to be grater or equal to 0. Currently it's: '%d' seconds", duration)
 	}
 
 	if len(validationResults) > 0 {
@@ -115,11 +121,15 @@ func ThreadStart(threadId int, url *string, executionResults []int, multiProgres
 		),
 		mpb.AppendDecorators(
 			decor.OnComplete(
-				decor.EwmaETA(decor.ET_STYLE_GO, 10), greenColor.Sprintf("COMPLETE"),
+				decor.EwmaETA(decor.ET_STYLE_GO, 10),
+				greenColor.Sprintf("COMPLETE"),
 			),
 		),
 	)
 	defer waitGroup.Done()
+
+	var maxExecutionEndTime = time.Now().Add(time.Second * time.Duration(duration))
+	logutil.InfoLog(fmt.Sprintf("Determined maximum execution duration time: %#v for thread with id: %d", maxExecutionEndTime, threadId), log, &loggingSupported)
 
 	for i := 0; i < count; i++ {
 		var requestStartTime = time.Now()
@@ -141,6 +151,12 @@ func ThreadStart(threadId int, url *string, executionResults []int, multiProgres
 			logutil.InfoLog(fmt.Sprintf("Sleeping thread with id: %d for %d millis before the next itteration", threadId, sleepMs), log, &loggingSupported)
 			time.Sleep(time.Millisecond * time.Duration(sleepMs))
 			logutil.InfoLog(fmt.Sprintf("Resumed thread with id: %d after sleeping for %d millis", threadId, sleepMs), log, &loggingSupported)
+		}
+
+		if duration != 0 && maxExecutionEndTime.Before(time.Now()) {
+			logutil.WarnLog(fmt.Sprintf("Exceeded maximum execution duration time: %#v. Terminating execution of thread with id: %d", maxExecutionEndTime, threadId), log, &loggingSupported)
+			progress.SetTotal(progress.Current(), true)
+			break
 		}
 	}
 

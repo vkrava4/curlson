@@ -18,7 +18,7 @@ func SetupLogs(log *logrus.Logger, persistLogs *bool) (bool, *os.File) {
 
 	if homeDirErr == nil {
 		var defaultFolderPath = homeDir + "/" + defaultFolderName
-		if _, isExistsErr := os.Stat(defaultFolderPath); os.IsNotExist(isExistsErr) {
+		if _, isNotExistErr := os.Stat(defaultFolderPath); os.IsNotExist(isNotExistErr) {
 			var mkdirErr = os.Mkdir(defaultFolderPath, os.ModeDir)
 			if mkdirErr != nil {
 				fmt.Println(redColor.Sprintf("Application can not create directory: '%s'. Reason: %s", defaultFolderName, mkdirErr.Error()))

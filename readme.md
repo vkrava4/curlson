@@ -18,9 +18,10 @@ testing scenarios.
 - and many others ... 
 
 ### Installation
-
 TODO:
 
-### How to Use
+### Features and Commands
+TODO:
 
+### Logs and Events
 TODO:

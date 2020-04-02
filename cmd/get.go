@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"curlson/fileutil"
 	"curlson/logutil"
 	"fmt"
 	"github.com/Sirupsen/logrus"
@@ -24,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -37,7 +39,9 @@ var threads int
 var duration int
 var template string
 var persistLogs = false
+var verbose = false
 var loggingSupported = false
+var templateEnabled = false
 
 var getCmd = &cobra.Command{
 	Use:   "get <URL>",
@@ -63,7 +67,8 @@ func init() {
 	getCmd.Flags().IntVarP(&sleepMs, "sleep", "s", 0, "A delay in millis after each GET requests. Doesn't impact performance report results if set (default 0)")
 	getCmd.Flags().IntVarP(&duration, "duration", "d", 0, "A maximum duration in seconds by reaching which requests execution will be terminated regardless of a 'count' flag value. When the value set to '0' this flag is ignored (default 0)")
 	getCmd.Flags().StringVarP(&template, "template-file", "f", "", "")
-	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "A property which defines whether execution log files will be persisted or automatically cleaned up")
+	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "A flag which defines whether execution log files will be persisted or automatically cleaned up")
+	getCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "A flag which defines whether additional execution information such as log creations or other actions will be logged in console output")
 }
 
 func ValidateInput() {
@@ -85,15 +90,26 @@ func ValidateInput() {
 	}
 
 	if template != "" {
-		var asbTemplatePath, absError = filepath.Abs(template)
+		var absTemplatePath, absError = filepath.Abs(template)
 		if absError != nil {
 			validationResults = fmt.Sprintf(validationResults+"\n - An error occured while identifying template file path: %s", absError.Error())
 		}
 
-		if _, isNotExistErr := os.Stat(asbTemplatePath); os.IsNotExist(isNotExistErr) {
-			validationResults = fmt.Sprintf(validationResults+"\n - The specyfied template file: '%s' can not be found.", asbTemplatePath)
+		if fileutil.FileExists(&absTemplatePath) {
+			var templateFile, errOpenTemplate = os.OpenFile(template, os.O_RDONLY, 0666)
+
+			if errOpenTemplate != nil {
+				validationResults = fmt.Sprintf(validationResults+"\n - An error occured while openning template file: %s", errOpenTemplate.Error())
+			} else {
+				template = absTemplatePath
+				var errCloseTemplate = templateFile.Close()
+				if errCloseTemplate != nil {
+					validationResults = fmt.Sprintf(validationResults+"\n - An error occured while working with template file: %s", errCloseTemplate.Error())
+				}
+				templateEnabled = true
+			}
 		} else {
-			template = asbTemplatePath
+			validationResults = fmt.Sprintf(validationResults+"\n - The specyfied template file: '%s' can not be found.", absTemplatePath)
 		}
 	}
 
@@ -104,9 +120,9 @@ func ValidateInput() {
 }
 
 func Run(url string) {
-	var supported, logFile = logutil.SetupLogs(log, &persistLogs)
+	var supported, logFile = logutil.SetupLogs(log, &persistLogs, &verbose)
 	loggingSupported = supported
-	defer logutil.ShutdownLogs(logFile, &persistLogs)
+	defer logutil.ShutdownLogs(logFile, &persistLogs, &verbose)
 
 	logutil.InfoLog(fmt.Sprintf("Setting up GET execution to URL address %s with threads = %d, amount of requests = %d, sleep millis timeout = %d", url, threads, count, sleepMs), log, &supported)
 
@@ -115,9 +131,10 @@ func Run(url string) {
 	var multiProgress = mpb.New(mpb.WithWaitGroup(&waitGroup))
 	waitGroup.Add(threads)
 
+	var linesCount = fileutil.CountLines(&template, &templateEnabled, log, &loggingSupported)
 	for i := 0; i < len(executionResults); i++ {
 		logutil.InfoLog(fmt.Sprintf("Setting up new thread with id: %d", i), log, &loggingSupported)
-		go ThreadStart(i, &url, executionResults, multiProgress, &waitGroup)
+		go ThreadStart(i, url, executionResults, multiProgress, &waitGroup, &linesCount)
 		logutil.InfoLog(fmt.Sprintf("Thread with id: %d successfully started", i), log, &loggingSupported)
 	}
 
@@ -126,7 +143,7 @@ func Run(url string) {
 
 }
 
-func ThreadStart(threadId int, url *string, executionResults []int, multiProgress *mpb.Progress, waitGroup *sync.WaitGroup) {
+func ThreadStart(threadId int, url string, executionResults []int, multiProgress *mpb.Progress, waitGroup *sync.WaitGroup, linesCount *int) {
 	var threadDescription = yellowColor.Sprintf("Thread #%-4d", threadId)
 
 	var progress = multiProgress.AddBar(int64(count),
@@ -149,16 +166,26 @@ func ThreadStart(threadId int, url *string, executionResults []int, multiProgres
 
 	for i := 0; i < count; i++ {
 		var requestStartTime = time.Now()
-		var getResponse, getResponseErr = http.Get(*url)
+		var getResponse, getResponseErr = http.Get(url)
+
+		if templateEnabled {
+			var lineNum = rand.Intn(*linesCount)
+			var line = fileutil.ReadLine(template, lineNum)
+
+			logutil.WarnLog(fmt.Sprintf("LINES: %d", *linesCount), log, &loggingSupported)
+			logutil.WarnLog(fmt.Sprintf("LINE NUM: %d", lineNum), log, &loggingSupported)
+			logutil.WarnLog(fmt.Sprintf("LINE: %s", line), log, &loggingSupported)
+		}
 
 		if getResponseErr == nil {
 			if getResponse.StatusCode >= 200 && getResponse.StatusCode <= 299 {
-				logutil.InfoLog(fmt.Sprintf("Successfully received HTTP GET responce from address '%s' with body %#v", *url, getResponse), log, &loggingSupported)
+				logutil.InfoLog(fmt.Sprintf("Successfully received HTTP GET responce from address '%s' with body %#v", url, getResponse), log, &loggingSupported)
 			} else {
-				logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with body %#v", getResponse.StatusCode, *url, getResponse), log, &loggingSupported)
+				logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with body %#v", getResponse.StatusCode, url, getResponse), log, &loggingSupported)
 			}
+			_ = getResponse.Body.Close()
 		} else {
-			logutil.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", *url, getResponseErr.Error()), log, &loggingSupported)
+			logutil.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", url, getResponseErr.Error()), log, &loggingSupported)
 		}
 
 		progress.Increment(time.Since(requestStartTime))

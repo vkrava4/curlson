@@ -12,14 +12,15 @@ import (
 var defaultFolderName = ".curlson"
 
 var redColor = color.New(color.FgRed)
+var yellowColor = color.New(color.FgYellow)
 
-func SetupLogs(log *logrus.Logger, persistLogs *bool) (bool, *os.File) {
+func SetupLogs(log *logrus.Logger, persistLogs *bool, verbose *bool) (bool, *os.File) {
 	var homeDir, homeDirErr = os.UserHomeDir()
 
 	if homeDirErr == nil {
 		var defaultFolderPath = homeDir + "/" + defaultFolderName
 		if _, isNotExistErr := os.Stat(defaultFolderPath); os.IsNotExist(isNotExistErr) {
-			var mkdirErr = os.Mkdir(defaultFolderPath, os.ModeDir)
+			var mkdirErr = os.Mkdir(defaultFolderPath, os.ModePerm)
 			if mkdirErr != nil {
 				fmt.Println(redColor.Sprintf("Application can not create directory: '%s'. Reason: %s", defaultFolderName, mkdirErr.Error()))
 			}
@@ -36,20 +37,22 @@ func SetupLogs(log *logrus.Logger, persistLogs *bool) (bool, *os.File) {
 				logsActionMessage = fmt.Sprintf("transformed to persistent file '%s'", strings.Replace(logfile.Name(), "latest-execution-", "execution-", -1))
 			}
 
-			fmt.Println(fmt.Sprintf("Created temporary log file '%s' which will be %s after execution", logfile.Name(), logsActionMessage))
+			if *verbose {
+				fmt.Println(fmt.Sprintf("Created temporary log file '%s' which will be %s after execution", logfile.Name(), logsActionMessage))
+			}
 			return true, logfile
-		} else {
-			fmt.Println(fmt.Sprintf("Application can not create temporary log file '%s'. Reason: %s", defaultFolderPath+string(os.PathSeparator)+defaultLogFileName, createFileErr.Error()))
+		} else if *verbose {
+			fmt.Println(yellowColor.Sprintf("Application can not create temporary log file '%s'. Reason: %s", defaultFolderPath+string(os.PathSeparator)+defaultLogFileName, createFileErr.Error()))
 		}
 
-	} else {
-		fmt.Println(fmt.Sprintf("Application can not determine user's HOME dirrectory. Reason: %s", homeDirErr.Error()))
+	} else if *verbose {
+		fmt.Println(yellowColor.Sprintf("Application can not determine user's HOME directory. Reason: %s", homeDirErr.Error()))
 	}
 
 	return false, nil
 }
 
-func ShutdownLogs(logfile *os.File, persistLogs *bool) {
+func ShutdownLogs(logfile *os.File, persistLogs *bool, verbose *bool) {
 	if logfile == nil {
 		return
 	}
@@ -59,17 +62,17 @@ func ShutdownLogs(logfile *os.File, persistLogs *bool) {
 		if *persistLogs {
 			var newLogfileName = strings.Replace(logfile.Name(), "latest-execution-", "execution-", -1)
 			var renameErr = os.Rename(logfile.Name(), newLogfileName)
-			if renameErr != nil {
-				fmt.Println(fmt.Sprintf("Application can not rename temporary log file: '%s' with new name '%s'. Reason: %s", logfile.Name(), newLogfileName, renameErr.Error()))
+			if renameErr != nil && *verbose {
+				fmt.Println(yellowColor.Sprintf("Application can not rename temporary log file: '%s' with new name '%s'. Reason: %s", logfile.Name(), newLogfileName, renameErr.Error()))
 			}
 		} else {
 			var removeErr = os.Remove(logfile.Name())
-			if removeErr != nil {
-				fmt.Println(fmt.Sprintf("Application can not cleanup a log file: '%s'. Reason: %s", logfile.Name(), removeErr.Error()))
+			if removeErr != nil && *verbose {
+				fmt.Println(yellowColor.Sprintf("Application can not cleanup a log file: '%s'. Reason: %s", logfile.Name(), removeErr.Error()))
 			}
 		}
-	} else {
-		fmt.Println(fmt.Sprintf("Application can not close a log file: '%s'. Reason: %s", logfile.Name(), closeFileErr.Error()))
+	} else if *verbose {
+		fmt.Println(yellowColor.Sprintf("Application can not close a log file: '%s'. Reason: %s", logfile.Name(), closeFileErr.Error()))
 	}
 }
 

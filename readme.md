@@ -1,4 +1,4 @@
-![>curlson_](docs/logo_large.png)
+![curlson](docs/logo_large.png)
 
 ## Overview
 `curlson` is a command-line project which is designed to perform thousands of concurrent requests with specified data based 

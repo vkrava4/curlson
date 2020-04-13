@@ -25,10 +25,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -49,7 +49,7 @@ var getCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ValidateInput()
-		Run(args[0])
+		runGet(args[0])
 	},
 }
 
@@ -95,7 +95,7 @@ func ValidateInput() {
 			validationResults = fmt.Sprintf(validationResults+"\n - An error occured while identifying template file path: %s", absError.Error())
 		}
 
-		if fileutil.FileExists(&absTemplatePath) {
+		if fileutil.FileExists(absTemplatePath) {
 			var templateFile, errOpenTemplate = os.OpenFile(template, os.O_RDONLY, 0666)
 
 			if errOpenTemplate != nil {
@@ -119,7 +119,7 @@ func ValidateInput() {
 	}
 }
 
-func Run(url string) {
+func runGet(url string) {
 	var supported, logFile = logutil.SetupLogs(log, &persistLogs, &verbose)
 	loggingSupported = supported
 	defer logutil.ShutdownLogs(logFile, &persistLogs, &verbose)
@@ -134,7 +134,7 @@ func Run(url string) {
 	var linesCount = fileutil.CountLines(&template, &templateEnabled, log, &loggingSupported)
 	for i := 0; i < len(executionResults); i++ {
 		logutil.InfoLog(fmt.Sprintf("Setting up new thread with id: %d", i), log, &loggingSupported)
-		go ThreadStart(i, url, executionResults, multiProgress, &waitGroup, &linesCount)
+		go ThreadStart(i, url, executionResults, multiProgress, &waitGroup, linesCount)
 		logutil.InfoLog(fmt.Sprintf("Thread with id: %d successfully started", i), log, &loggingSupported)
 	}
 
@@ -143,8 +143,13 @@ func Run(url string) {
 
 }
 
-func ThreadStart(threadId int, url string, executionResults []int, multiProgress *mpb.Progress, waitGroup *sync.WaitGroup, linesCount *int) {
+func ThreadStart(threadId int, url string, executionResults []int, multiProgress *mpb.Progress, waitGroup *sync.WaitGroup, linesCount int) {
 	var threadDescription = yellowColor.Sprintf("Thread #%-4d", threadId)
+
+	var onCompleteDecorator = decor.OnComplete(
+		decor.EwmaETA(decor.ET_STYLE_GO, 10),
+		greenColor.Sprintf("COMPLETE"),
+	)
 
 	var progress = multiProgress.AddBar(int64(count),
 		mpb.BarStyle("╢▌▌ ╟"),
@@ -152,12 +157,7 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 			decor.Name(threadDescription),
 			decor.Percentage(decor.WCSyncSpace),
 		),
-		mpb.AppendDecorators(
-			decor.OnComplete(
-				decor.EwmaETA(decor.ET_STYLE_GO, 10),
-				greenColor.Sprintf("COMPLETE"),
-			),
-		),
+		mpb.AppendDecorators(onCompleteDecorator),
 	)
 	defer waitGroup.Done()
 
@@ -166,23 +166,23 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 
 	for i := 0; i < count; i++ {
 		var requestStartTime = time.Now()
-		var getResponse, getResponseErr = http.Get(url)
 
-		if templateEnabled {
-			var lineNum = rand.Intn(*linesCount)
-			var line = fileutil.ReadLine(template, lineNum)
+		var getUrl string
+		if templateEnabled && linesCount > 0 {
+			var lineNum, templateLine = fileutil.ReadRandomLine(template, linesCount)
+			logutil.InfoLog(fmt.Sprintf("Received template line %s from the line %d", templateLine, lineNum), log, &loggingSupported)
+			var updatedUrl = prepareURL(url, &templateLine)
 
-			logutil.WarnLog(fmt.Sprintf("LINES: %d", *linesCount), log, &loggingSupported)
-			logutil.WarnLog(fmt.Sprintf("LINE NUM: %d", lineNum), log, &loggingSupported)
-			logutil.WarnLog(fmt.Sprintf("LINE: %s", line), log, &loggingSupported)
+			logutil.InfoLog(fmt.Sprintf("Updated URL address ccording to template file %s with line number %d. WAS: %s BECOME: %s", template, lineNum, url, updatedUrl), log, &loggingSupported)
+			getUrl = updatedUrl
+		} else {
+			getUrl = url
 		}
 
+		var getResponse, getResponseErr = http.Get(getUrl)
+
 		if getResponseErr == nil {
-			if getResponse.StatusCode >= 200 && getResponse.StatusCode <= 299 {
-				logutil.InfoLog(fmt.Sprintf("Successfully received HTTP GET responce from address '%s' with body %#v", url, getResponse), log, &loggingSupported)
-			} else {
-				logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with body %#v", getResponse.StatusCode, url, getResponse), log, &loggingSupported)
-			}
+			logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with ContentLength: %d", getResponse.StatusCode, url, getResponse.ContentLength), log, &loggingSupported)
 			_ = getResponse.Body.Close()
 		} else {
 			logutil.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", url, getResponseErr.Error()), log, &loggingSupported)
@@ -204,6 +204,21 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 	}
 
 	executionResults[threadId] = 1
+}
+
+// Prepares given url param (URL address) by replacing placeholder values: `#T{i}` with given `valuesLine[i]` value
+// The resulted url will be encoded according to
+func prepareURL(givenUrl string, valuesLine *string) string {
+	var values = strings.Split(*valuesLine, ",")
+	var valuesLen = len(values)
+
+	if valuesLen != 0 {
+		for i, value := range values {
+			givenUrl = strings.ReplaceAll(givenUrl, fmt.Sprintf("#T{%d}", i), value)
+		}
+	}
+
+	return givenUrl
 }
 
 func MonitorActivity(executionResults []int) {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"io"
+	"math/rand"
 	"os"
 	"strings"
 )
@@ -17,6 +18,9 @@ var (
 	endLineDelimiter = byte('\n')
 )
 
+// Counts the number of lines in a given file.
+// In case property 'templateEnabled' is false (i.e templating is disabled) either there is an error occurred while reading a file
+// the result '-1' will be returned
 func CountLines(templateFile *string, templateEnabled *bool, log *logrus.Logger, loggingSupported *bool) int {
 	if !*templateEnabled {
 		logutil.InfoLog("Skipping templating stage. It is disabled", log, loggingSupported)
@@ -49,6 +53,11 @@ func CountLines(templateFile *string, templateEnabled *bool, log *logrus.Logger,
 	}
 }
 
+func ReadRandomLine(templateFile string, linesCount int) (int, string) {
+	var lineNum = rand.Intn(linesCount)
+	return lineNum, ReadLine(templateFile, lineNum)
+}
+
 func ReadLine(templateFile string, lineNumber int) string {
 	var counter = -1
 
@@ -67,8 +76,8 @@ func ReadLine(templateFile string, lineNumber int) string {
 	}
 }
 
-func FileExists(path *string) bool {
-	if _, isNotExistErr := os.Stat(*path); !os.IsNotExist(isNotExistErr) {
+func FileExists(path string) bool {
+	if _, isNotExistErr := os.Stat(path); !os.IsNotExist(isNotExistErr) {
 		return true
 	} else {
 		return false

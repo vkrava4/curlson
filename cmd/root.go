@@ -27,10 +27,10 @@ import (
 var cfgFile string
 
 var rootCmd = &cobra.Command{
-	Use:   "curlson",
-	Short: "An advanced version of your favourite cURL",
+	Use: "curlson",
+	Short: "A command-line project which is designed to perform thousands of concurrent requests with specified data " +
+		"based on user-templates or static values to destination address with handy statistic reports and tracing options.",
 	Long: `
-A command-line project which is designed to perform thousands of concurrent requests with specified data based on user-templates or static values to destination address with handy statistic reports and tracing options.
 
 Features:
 	- Document and request templating
@@ -38,13 +38,8 @@ Features:
 	- Performance monitoring / Statistics
 	- Results reporting
 	- Tracing
-	- and many others ... 
 
-
-Visit: https://github.com/vkrava4/curlson for additional information`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+Visit official GitHub: 'https://github.com/vkrava4/curlson' for additional information`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -64,10 +59,6 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.curlson.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.

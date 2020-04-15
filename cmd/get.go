@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"curlson/fileutil"
+	"curlson/httpsupport"
 	"curlson/logutil"
 	"fmt"
 	"github.com/Sirupsen/logrus"
@@ -28,7 +29,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -44,8 +44,8 @@ var loggingSupported = false
 var templateEnabled = false
 
 var getCmd = &cobra.Command{
-	Use:   "get <URL>",
-	Short: "Performs HTTP GET request with options",
+	Use:   "get <URL> [flags]",
+	Short: "Performs HTTP GET request(s) based on specified options",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ValidateInput()
@@ -66,7 +66,7 @@ func init() {
 	getCmd.Flags().IntVarP(&count, "count", "c", 1, "A number of GET requests per single thread")
 	getCmd.Flags().IntVarP(&sleepMs, "sleep", "s", 0, "A delay in millis after each GET requests. Doesn't impact performance report results if set (default 0)")
 	getCmd.Flags().IntVarP(&duration, "duration", "d", 0, "A maximum duration in seconds by reaching which requests execution will be terminated regardless of a 'count' flag value. When the value set to '0' this flag is ignored (default 0)")
-	getCmd.Flags().StringVarP(&template, "template-file", "f", "", "")
+	getCmd.Flags().StringVarP(&template, "template-file", "T", "", "")
 	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "A flag which defines whether execution log files will be persisted or automatically cleaned up")
 	getCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "A flag which defines whether additional execution information such as log creations or other actions will be logged in console output")
 }
@@ -148,7 +148,7 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 
 	var onCompleteDecorator = decor.OnComplete(
 		decor.EwmaETA(decor.ET_STYLE_GO, 10),
-		greenColor.Sprintf("COMPLETE"),
+		greenColor.Sprintf("DONE"),
 	)
 
 	var progress = multiProgress.AddBar(int64(count),
@@ -171,7 +171,12 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 		if templateEnabled && linesCount > 0 {
 			var lineNum, templateLine = fileutil.ReadRandomLine(template, linesCount)
 			logutil.InfoLog(fmt.Sprintf("Received template line %s from the line %d", templateLine, lineNum), log, &loggingSupported)
-			var updatedUrl = prepareURL(url, &templateLine)
+			var updatedUrl, errPrepareUrl = httpsupport.PrepareUrl(url, templateLine)
+			if errPrepareUrl != nil {
+				logutil.ErrorLog("Can not make GET request with broken URL. Skipping this iteration", log, &loggingSupported)
+				progress.Increment(time.Since(requestStartTime))
+				continue
+			}
 
 			logutil.InfoLog(fmt.Sprintf("Updated URL address ccording to template file %s with line number %d. WAS: %s BECOME: %s", template, lineNum, url, updatedUrl), log, &loggingSupported)
 			getUrl = updatedUrl
@@ -182,10 +187,10 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 		var getResponse, getResponseErr = http.Get(getUrl)
 
 		if getResponseErr == nil {
-			logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with ContentLength: %d", getResponse.StatusCode, url, getResponse.ContentLength), log, &loggingSupported)
+			logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with ContentLength: %d", getResponse.StatusCode, getUrl, getResponse.ContentLength), log, &loggingSupported)
 			_ = getResponse.Body.Close()
 		} else {
-			logutil.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", url, getResponseErr.Error()), log, &loggingSupported)
+			logutil.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", getUrl, getResponseErr.Error()), log, &loggingSupported)
 		}
 
 		progress.Increment(time.Since(requestStartTime))
@@ -204,21 +209,6 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 	}
 
 	executionResults[threadId] = 1
-}
-
-// Prepares given url param (URL address) by replacing placeholder values: `#T{i}` with given `valuesLine[i]` value
-// The resulted url will be encoded according to
-func prepareURL(givenUrl string, valuesLine *string) string {
-	var values = strings.Split(*valuesLine, ",")
-	var valuesLen = len(values)
-
-	if valuesLen != 0 {
-		for i, value := range values {
-			givenUrl = strings.ReplaceAll(givenUrl, fmt.Sprintf("#T{%d}", i), value)
-		}
-	}
-
-	return givenUrl
 }
 
 func MonitorActivity(executionResults []int) {

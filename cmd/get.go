@@ -17,6 +17,8 @@ limitations under the License.
 package cmd
 
 import (
+	"curlson/fileutil"
+	"curlson/httpsupport"
 	"curlson/logutil"
 	"fmt"
 	"github.com/Sirupsen/logrus"
@@ -26,6 +28,7 @@ import (
 	"github.com/vbauerster/mpb/decor"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -34,16 +37,19 @@ var count int
 var sleepMs int
 var threads int
 var duration int
+var template string
 var persistLogs = false
+var verbose = false
 var loggingSupported = false
+var templateEnabled = false
 
 var getCmd = &cobra.Command{
-	Use:   "get <URL>",
-	Short: "Performs HTTP GET request with options",
+	Use:   "get <URL> [flags]",
+	Short: "Performs HTTP GET request(s) based on specified options",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ValidateInput()
-		Run(args[0])
+		runGet(args[0])
 	},
 }
 
@@ -60,7 +66,9 @@ func init() {
 	getCmd.Flags().IntVarP(&count, "count", "c", 1, "A number of GET requests per single thread")
 	getCmd.Flags().IntVarP(&sleepMs, "sleep", "s", 0, "A delay in millis after each GET requests. Doesn't impact performance report results if set (default 0)")
 	getCmd.Flags().IntVarP(&duration, "duration", "d", 0, "A maximum duration in seconds by reaching which requests execution will be terminated regardless of a 'count' flag value. When the value set to '0' this flag is ignored (default 0)")
-	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "A property which defines whether execution log files will be persisted or automatically cleaned up")
+	getCmd.Flags().StringVarP(&template, "template-file", "T", "", "")
+	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "A flag which defines whether execution log files will be persisted or automatically cleaned up")
+	getCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "A flag which defines whether additional execution information such as log creations or other actions will be logged in console output")
 }
 
 func ValidateInput() {
@@ -81,16 +89,40 @@ func ValidateInput() {
 		validationResults = fmt.Sprintf(validationResults+"\n - The maximum execution duration in seconds has to be grater or equal to 0. Currently it's: '%d' seconds", duration)
 	}
 
+	if template != "" {
+		var absTemplatePath, absError = filepath.Abs(template)
+		if absError != nil {
+			validationResults = fmt.Sprintf(validationResults+"\n - An error occured while identifying template file path: %s", absError.Error())
+		}
+
+		if fileutil.FileExists(absTemplatePath) {
+			var templateFile, errOpenTemplate = os.OpenFile(template, os.O_RDONLY, 0666)
+
+			if errOpenTemplate != nil {
+				validationResults = fmt.Sprintf(validationResults+"\n - An error occured while openning template file: %s", errOpenTemplate.Error())
+			} else {
+				template = absTemplatePath
+				var errCloseTemplate = templateFile.Close()
+				if errCloseTemplate != nil {
+					validationResults = fmt.Sprintf(validationResults+"\n - An error occured while working with template file: %s", errCloseTemplate.Error())
+				}
+				templateEnabled = true
+			}
+		} else {
+			validationResults = fmt.Sprintf(validationResults+"\n - The specyfied template file: '%s' can not be found.", absTemplatePath)
+		}
+	}
+
 	if len(validationResults) > 0 {
 		fmt.Println(redColor.Sprintf(validationResults))
 		os.Exit(1)
 	}
 }
 
-func Run(url string) {
-	var supported, logFile = logutil.SetupLogs(log, &persistLogs)
+func runGet(url string) {
+	var supported, logFile = logutil.SetupLogs(log, &persistLogs, &verbose)
 	loggingSupported = supported
-	defer logutil.ShutdownLogs(logFile, &persistLogs)
+	defer logutil.ShutdownLogs(logFile, &persistLogs, &verbose)
 
 	logutil.InfoLog(fmt.Sprintf("Setting up GET execution to URL address %s with threads = %d, amount of requests = %d, sleep millis timeout = %d", url, threads, count, sleepMs), log, &supported)
 
@@ -99,9 +131,10 @@ func Run(url string) {
 	var multiProgress = mpb.New(mpb.WithWaitGroup(&waitGroup))
 	waitGroup.Add(threads)
 
+	var linesCount = fileutil.CountLines(&template, &templateEnabled, log, &loggingSupported)
 	for i := 0; i < len(executionResults); i++ {
 		logutil.InfoLog(fmt.Sprintf("Setting up new thread with id: %d", i), log, &loggingSupported)
-		go ThreadStart(i, &url, executionResults, multiProgress, &waitGroup)
+		go ThreadStart(i, url, executionResults, multiProgress, &waitGroup, linesCount)
 		logutil.InfoLog(fmt.Sprintf("Thread with id: %d successfully started", i), log, &loggingSupported)
 	}
 
@@ -110,8 +143,13 @@ func Run(url string) {
 
 }
 
-func ThreadStart(threadId int, url *string, executionResults []int, multiProgress *mpb.Progress, waitGroup *sync.WaitGroup) {
+func ThreadStart(threadId int, url string, executionResults []int, multiProgress *mpb.Progress, waitGroup *sync.WaitGroup, linesCount int) {
 	var threadDescription = yellowColor.Sprintf("Thread #%-4d", threadId)
+
+	var onCompleteDecorator = decor.OnComplete(
+		decor.EwmaETA(decor.ET_STYLE_GO, 10),
+		greenColor.Sprintf("DONE"),
+	)
 
 	var progress = multiProgress.AddBar(int64(count),
 		mpb.BarStyle("╢▌▌ ╟"),
@@ -119,12 +157,7 @@ func ThreadStart(threadId int, url *string, executionResults []int, multiProgres
 			decor.Name(threadDescription),
 			decor.Percentage(decor.WCSyncSpace),
 		),
-		mpb.AppendDecorators(
-			decor.OnComplete(
-				decor.EwmaETA(decor.ET_STYLE_GO, 10),
-				greenColor.Sprintf("COMPLETE"),
-			),
-		),
+		mpb.AppendDecorators(onCompleteDecorator),
 	)
 	defer waitGroup.Done()
 
@@ -133,16 +166,31 @@ func ThreadStart(threadId int, url *string, executionResults []int, multiProgres
 
 	for i := 0; i < count; i++ {
 		var requestStartTime = time.Now()
-		var getResponse, getResponseErr = http.Get(*url)
+
+		var getUrl string
+		if templateEnabled && linesCount > 0 {
+			var lineNum, templateLine = fileutil.ReadRandomLine(template, linesCount)
+			logutil.InfoLog(fmt.Sprintf("Received template line %s from the line %d", templateLine, lineNum), log, &loggingSupported)
+			var updatedUrl, errPrepareUrl = httpsupport.PrepareUrl(url, templateLine)
+			if errPrepareUrl != nil {
+				logutil.ErrorLog("Can not make GET request with broken URL. Skipping this iteration", log, &loggingSupported)
+				progress.Increment(time.Since(requestStartTime))
+				continue
+			}
+
+			logutil.InfoLog(fmt.Sprintf("Updated URL address ccording to template file %s with line number %d. WAS: %s BECOME: %s", template, lineNum, url, updatedUrl), log, &loggingSupported)
+			getUrl = updatedUrl
+		} else {
+			getUrl = url
+		}
+
+		var getResponse, getResponseErr = http.Get(getUrl)
 
 		if getResponseErr == nil {
-			if getResponse.StatusCode >= 200 && getResponse.StatusCode <= 299 {
-				logutil.InfoLog(fmt.Sprintf("Successfully received HTTP GET responce from address '%s' with body %#v", *url, getResponse), log, &loggingSupported)
-			} else {
-				logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with body %#v", getResponse.StatusCode, *url, getResponse), log, &loggingSupported)
-			}
+			logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with ContentLength: %d", getResponse.StatusCode, getUrl, getResponse.ContentLength), log, &loggingSupported)
+			_ = getResponse.Body.Close()
 		} else {
-			logutil.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", *url, getResponseErr.Error()), log, &loggingSupported)
+			logutil.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", getUrl, getResponseErr.Error()), log, &loggingSupported)
 		}
 
 		progress.Increment(time.Since(requestStartTime))
@@ -154,7 +202,7 @@ func ThreadStart(threadId int, url *string, executionResults []int, multiProgres
 		}
 
 		if duration != 0 && maxExecutionEndTime.Before(time.Now()) {
-			logutil.WarnLog(fmt.Sprintf("Exceeded maximum execution duration time: %#v. Terminating execution of thread with id: %d", maxExecutionEndTime, threadId), log, &loggingSupported)
+			logutil.WarnLog(fmt.Sprintf("Exceeded maximum execution duration of %d second(s). Terminating execution of thread with id: %d as it did not complete before time: %s", duration, threadId, maxExecutionEndTime.Format(time.RFC3339)), log, &loggingSupported)
 			progress.SetTotal(progress.Current(), true)
 			break
 		}

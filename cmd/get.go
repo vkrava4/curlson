@@ -17,13 +17,13 @@ limitations under the License.
 package cmd
 
 import (
-	"../util"
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
+	"github.com/vkrava4/curlson/cmd/util"
 	"net/http"
 	"os"
 	"path/filepath"

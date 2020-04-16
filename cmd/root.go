@@ -31,6 +31,7 @@ var rootCmd = &cobra.Command{
 	Short: "A command-line project which is designed to perform thousands of concurrent requests with specified data " +
 		"based on user-templates or static values to destination address with handy statistic reports and tracing options.",
 	Long: `
+A command-line project which is designed to perform thousands of concurrent requests with specified data based on user-templates or static values to destination address with handy statistic reports and tracing options.
 
 Features:
 	- Document and request templating

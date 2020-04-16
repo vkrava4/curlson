@@ -14,6 +14,5 @@ jobs:
 
       - name: Make binaries
         uses: sosedoff/actions/golang-build@master
-        # Uncomment to following piece to restrict targets
          with:
            args: linux/amd64 darwin/amd64

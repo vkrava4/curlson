@@ -17,15 +17,13 @@ limitations under the License.
 package cmd
 
 import (
-	"curlson/fileutil"
-	"curlson/httpsupport"
-	"curlson/logutil"
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
+	"github.com/vkrava4/curlson/cmd/util"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -95,7 +93,7 @@ func ValidateInput() {
 			validationResults = fmt.Sprintf(validationResults+"\n - An error occured while identifying template file path: %s", absError.Error())
 		}
 
-		if fileutil.FileExists(absTemplatePath) {
+		if util.FileExists(absTemplatePath) {
 			var templateFile, errOpenTemplate = os.OpenFile(template, os.O_RDONLY, 0666)
 
 			if errOpenTemplate != nil {
@@ -120,22 +118,22 @@ func ValidateInput() {
 }
 
 func runGet(url string) {
-	var supported, logFile = logutil.SetupLogs(log, &persistLogs, &verbose)
+	var supported, logFile = util.SetupLogs(log, &persistLogs, &verbose)
 	loggingSupported = supported
-	defer logutil.ShutdownLogs(logFile, &persistLogs, &verbose)
+	defer util.ShutdownLogs(logFile, &persistLogs, &verbose)
 
-	logutil.InfoLog(fmt.Sprintf("Setting up GET execution to URL address %s with threads = %d, amount of requests = %d, sleep millis timeout = %d", url, threads, count, sleepMs), log, &supported)
+	util.InfoLog(fmt.Sprintf("Setting up GET execution to URL address %s with threads = %d, amount of requests = %d, sleep millis timeout = %d", url, threads, count, sleepMs), log, &supported)
 
 	var executionResults = make([]int, threads)
 	var waitGroup sync.WaitGroup
 	var multiProgress = mpb.New(mpb.WithWaitGroup(&waitGroup))
 	waitGroup.Add(threads)
 
-	var linesCount = fileutil.CountLines(&template, &templateEnabled, log, &loggingSupported)
+	var linesCount = util.CountLines(&template, &templateEnabled, log, &loggingSupported)
 	for i := 0; i < len(executionResults); i++ {
-		logutil.InfoLog(fmt.Sprintf("Setting up new thread with id: %d", i), log, &loggingSupported)
+		util.InfoLog(fmt.Sprintf("Setting up new thread with id: %d", i), log, &loggingSupported)
 		go ThreadStart(i, url, executionResults, multiProgress, &waitGroup, linesCount)
-		logutil.InfoLog(fmt.Sprintf("Thread with id: %d successfully started", i), log, &loggingSupported)
+		util.InfoLog(fmt.Sprintf("Thread with id: %d successfully started", i), log, &loggingSupported)
 	}
 
 	MonitorActivity(executionResults)
@@ -162,23 +160,23 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 	defer waitGroup.Done()
 
 	var maxExecutionEndTime = time.Now().Add(time.Second * time.Duration(duration))
-	logutil.InfoLog(fmt.Sprintf("Determined maximum execution duration time: %#v for thread with id: %d", maxExecutionEndTime, threadId), log, &loggingSupported)
+	util.InfoLog(fmt.Sprintf("Determined maximum execution duration time: %#v for thread with id: %d", maxExecutionEndTime, threadId), log, &loggingSupported)
 
 	for i := 0; i < count; i++ {
 		var requestStartTime = time.Now()
-
 		var getUrl string
 		if templateEnabled && linesCount > 0 {
-			var lineNum, templateLine = fileutil.ReadRandomLine(template, linesCount)
-			logutil.InfoLog(fmt.Sprintf("Received template line %s from the line %d", templateLine, lineNum), log, &loggingSupported)
-			var updatedUrl, errPrepareUrl = httpsupport.PrepareUrl(url, templateLine)
+			var lineNum, templateLine = util.ReadRandomLine(template, linesCount)
+			util.InfoLog(fmt.Sprintf("Received template line %s from the line %d", templateLine, lineNum), log, &loggingSupported)
+			var updatedUrl, errPrepareUrl = util.PrepareUrl(url, templateLine)
 			if errPrepareUrl != nil {
-				logutil.ErrorLog("Can not make GET request with broken URL. Skipping this iteration", log, &loggingSupported)
-				progress.Increment(time.Since(requestStartTime))
+				util.ErrorLog("Can not make GET request with broken URL. Skipping this iteration", log, &loggingSupported)
+				progress.Increment()
+				progress.DecoratorEwmaUpdate(time.Since(requestStartTime))
 				continue
 			}
 
-			logutil.InfoLog(fmt.Sprintf("Updated URL address ccording to template file %s with line number %d. WAS: %s BECOME: %s", template, lineNum, url, updatedUrl), log, &loggingSupported)
+			util.InfoLog(fmt.Sprintf("Updated URL address ccording to template file %s with line number %d. WAS: %s BECOME: %s", template, lineNum, url, updatedUrl), log, &loggingSupported)
 			getUrl = updatedUrl
 		} else {
 			getUrl = url
@@ -187,22 +185,23 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 		var getResponse, getResponseErr = http.Get(getUrl)
 
 		if getResponseErr == nil {
-			logutil.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with ContentLength: %d", getResponse.StatusCode, getUrl, getResponse.ContentLength), log, &loggingSupported)
+			util.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with ContentLength: %d", getResponse.StatusCode, getUrl, getResponse.ContentLength), log, &loggingSupported)
 			_ = getResponse.Body.Close()
 		} else {
-			logutil.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", getUrl, getResponseErr.Error()), log, &loggingSupported)
+			util.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", getUrl, getResponseErr.Error()), log, &loggingSupported)
 		}
 
-		progress.Increment(time.Since(requestStartTime))
+		progress.Increment()
+		progress.DecoratorEwmaUpdate(time.Since(requestStartTime))
 
 		if sleepMs > 0 {
-			logutil.InfoLog(fmt.Sprintf("Sleeping thread with id: %d for %d millis before the next itteration", threadId, sleepMs), log, &loggingSupported)
+			util.InfoLog(fmt.Sprintf("Sleeping thread with id: %d for %d millis before the next itteration", threadId, sleepMs), log, &loggingSupported)
 			time.Sleep(time.Millisecond * time.Duration(sleepMs))
-			logutil.InfoLog(fmt.Sprintf("Resumed thread with id: %d after sleeping for %d millis", threadId, sleepMs), log, &loggingSupported)
+			util.InfoLog(fmt.Sprintf("Resumed thread with id: %d after sleeping for %d millis", threadId, sleepMs), log, &loggingSupported)
 		}
 
 		if duration != 0 && maxExecutionEndTime.Before(time.Now()) {
-			logutil.WarnLog(fmt.Sprintf("Exceeded maximum execution duration of %d second(s). Terminating execution of thread with id: %d as it did not complete before time: %s", duration, threadId, maxExecutionEndTime.Format(time.RFC3339)), log, &loggingSupported)
+			util.WarnLog(fmt.Sprintf("Exceeded maximum execution duration of %d second(s). Terminating execution of thread with id: %d as it did not complete before time: %s", duration, threadId, maxExecutionEndTime.Format(time.RFC3339)), log, &loggingSupported)
 			progress.SetTotal(progress.Current(), true)
 			break
 		}

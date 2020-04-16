@@ -1,9 +1,8 @@
-package fileutil
+package util
 
 import (
 	"bufio"
 	"bytes"
-	"curlson/logutil"
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"io"
@@ -23,11 +22,11 @@ var (
 // the result '-1' will be returned
 func CountLines(templateFile *string, templateEnabled *bool, log *logrus.Logger, loggingSupported *bool) int {
 	if !*templateEnabled {
-		logutil.InfoLog("Skipping templating stage. It is disabled", log, loggingSupported)
+		InfoLog("Skipping templating stage. It is disabled", log, loggingSupported)
 		return -1
 	}
 
-	logutil.InfoLog(fmt.Sprintf("Determinig the number of lines in template file: %s", *templateFile), log, loggingSupported)
+	InfoLog(fmt.Sprintf("Determinig the number of lines in template file: %s", *templateFile), log, loggingSupported)
 	var file, _ = os.OpenFile(*templateFile, os.O_RDONLY, defaultMode)
 	defer file.Close()
 
@@ -43,11 +42,11 @@ func CountLines(templateFile *string, templateEnabled *bool, log *logrus.Logger,
 
 		switch {
 		case err == io.EOF:
-			logutil.InfoLog(fmt.Sprintf("Reached the end of template file. Total lines: %d", count), log, loggingSupported)
+			InfoLog(fmt.Sprintf("Reached the end of template file. Total lines: %d", count), log, loggingSupported)
 			return count
 
 		case err != nil:
-			logutil.ErrorLog(fmt.Sprintf("An error occured while reading a file: '%s'. Error: %s", *templateFile, err.Error()), log, loggingSupported)
+			ErrorLog(fmt.Sprintf("An error occured while reading a file: '%s'. Error: %s", *templateFile, err.Error()), log, loggingSupported)
 			return -1
 		}
 	}

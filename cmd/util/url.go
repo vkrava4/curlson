@@ -1,4 +1,4 @@
-package httpsupport
+package util
 
 import (
 	"errors"

@@ -26,4 +26,4 @@ jobs:
         fi
 
     - name: Build Curlson package
-      run: go build -v -i curlson.
+      run: go build -v -i curlson

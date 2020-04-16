@@ -1,0 +1,7 @@
+language: go
+go:
+  - 1.13.8
+  - release
+
+script:
+  - go test -v ./...

@@ -4,4 +4,4 @@ go:
 
 script:
   - go test -v ./...
-  - go build -i curlson
+  - go build -i github.com/vkrava4/curlson

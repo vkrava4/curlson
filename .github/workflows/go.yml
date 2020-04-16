@@ -1,30 +1,19 @@
-name: Go Build & Test
+name: Build Go binaries
 
-on: [push]
+on:
+  push:
+    branches:
+      - "*"
 
 jobs:
-
   build:
-    name: Build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@master
 
-    - name: Set up Go 1.13.8
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.13.8
-      id: go
-
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-
-    - name: Get dependencies
-      run: |
-        go get -v -t -d ./...
-        if [ -f Gopkg.toml ]; then
-            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-            dep ensure
-        fi
-
-    - name: Build Curlson package
-      run: go build -v -i curlson.
+      - name: Make binaries
+        uses: sosedoff/actions/golang-build@master
+        # Uncomment to following piece to restrict targets
+        with:
+          args: linux/amd64 darwin/amd64

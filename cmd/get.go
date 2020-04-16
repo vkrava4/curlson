@@ -17,13 +17,13 @@ limitations under the License.
 package cmd
 
 import (
+	"../util"
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
-	"github.com/vkrava4/curlson/util"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -163,6 +163,7 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 	util.InfoLog(fmt.Sprintf("Determined maximum execution duration time: %#v for thread with id: %d", maxExecutionEndTime, threadId), log, &loggingSupported)
 
 	for i := 0; i < count; i++ {
+		var requestStartTime = time.Now()
 		var getUrl string
 		if templateEnabled && linesCount > 0 {
 			var lineNum, templateLine = util.ReadRandomLine(template, linesCount)
@@ -171,6 +172,7 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 			if errPrepareUrl != nil {
 				util.ErrorLog("Can not make GET request with broken URL. Skipping this iteration", log, &loggingSupported)
 				progress.Increment()
+				progress.DecoratorEwmaUpdate(time.Since(requestStartTime))
 				continue
 			}
 
@@ -190,6 +192,7 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 		}
 
 		progress.Increment()
+		progress.DecoratorEwmaUpdate(time.Since(requestStartTime))
 
 		if sleepMs > 0 {
 			util.InfoLog(fmt.Sprintf("Sleeping thread with id: %d for %d millis before the next itteration", threadId, sleepMs), log, &loggingSupported)

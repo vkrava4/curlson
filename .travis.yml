@@ -1,6 +1,7 @@
 language: go
 go:
   - 1.13.8
+  - master
 
 script:
   - go test -v ./...

@@ -1,7 +1,8 @@
 package util
 
 const (
-	MsgShouldBePositive = "A number of %s should be positive. Currently it's: '%d'"
+	MsgShouldBePositive       = "%s should be positive. Currently it's: '%d'"
+	MsgShouldBePositiveOrZero = "%s should be positive or equal to zero. Currently it's: '%d'"
 )
 
 type Validator interface {
@@ -16,6 +17,8 @@ type ValidationResult struct {
 type ValidatorEntity struct {
 	threads      int
 	requestCount int
+	sleep        int
+	maxDuration  int
 	url          string
 	template     string
 }

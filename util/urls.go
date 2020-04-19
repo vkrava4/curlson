@@ -1,4 +1,4 @@
-package httpsupport
+package util
 
 import (
 	"errors"
@@ -28,7 +28,7 @@ func PrepareUrl(urlTemplate string, valuesLine string) (string, error) {
 	}
 
 	if ContainsTemplatePlaceholders(urlTemplate) {
-		return "", errors.New(fmt.Sprintf("Giving URL: '%s' has unresolved placeholders", urlTemplate))
+		return "", errors.New(fmt.Sprintf("Given URL: '%s' has unresolved placeholders", urlTemplate))
 	}
 
 	return ParseAndValidateUrl(urlTemplate)

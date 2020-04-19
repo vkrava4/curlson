@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "curlson/cmd"
+import "github.com/vkrava4/curlson/cmd"
 
 func main() {
 	cmd.Execute()

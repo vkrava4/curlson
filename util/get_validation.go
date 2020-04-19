@@ -57,8 +57,14 @@ func (b *GetValidator) AddMaxDuration(maxDuration int) GetValidatorBuilder {
 }
 
 func (b *GetValidator) WithAppConfiguration(conf *AppConfiguration) GetValidatorBuilder {
-	conf.template = &TemplateConfiguration{}
-	conf.logs = &LogConfiguration{}
+	if conf.template == nil {
+		conf.template = &TemplateConfiguration{}
+	}
+
+	if conf.logs == nil {
+		conf.logs = &LogConfiguration{}
+	}
+
 	b.entity.conf = conf
 	return b
 }
@@ -101,11 +107,11 @@ func validateUrl(urlAddress string, result *ValidationResult) {
 
 }
 
-func validateTemplate(template string, url string, result *ValidationResult) {
+func validateTemplate(template string, urlAddress string, result *ValidationResult) {
 	if template == "" {
-		if ContainsTemplatePlaceholders(url) {
+		if ContainsTemplatePlaceholders(urlAddress) {
 			result.valid = false
-			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, url, "URL address contains placeholder(s) for missing template file"))
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, urlAddress, "URL address contains placeholder(s) for missing template file"))
 			return
 		}
 	} else {
@@ -124,7 +130,7 @@ func validateTemplate(template string, url string, result *ValidationResult) {
 				return
 			} else {
 				var templateSize = 0
-				if !ContainsTemplatePlaceholders(url) {
+				if !ContainsTemplatePlaceholders(urlAddress) {
 					result.warnMessages = append(result.warnMessages, "")
 				} else {
 					var reader = bufio.NewReader(templateFile)
@@ -141,11 +147,11 @@ func validateTemplate(template string, url string, result *ValidationResult) {
 							break
 						}
 
-						if len(strings.TrimSpace(line)) == 0 {
+						if len(line) == 0 {
 							break
 						} else {
 							line = strings.TrimSuffix(line, string(filesEndLineDelimiter))
-							var _, errPrepareUrl = PrepareUrl(url, line)
+							var _, errPrepareUrl = PrepareUrl(urlAddress, line)
 
 							if errPrepareUrl != nil {
 								result.valid = false

@@ -289,7 +289,7 @@ func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags(t *test
 }
 
 func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags_ForLargeDataSet(t *testing.T) {
-	var givenNumberOfRecords = 100000
+	var givenNumberOfRecords = 10000
 
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 666
@@ -325,5 +325,5 @@ func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags_ForLarg
 		t.Errorf("Unexpected app configuration result %v", actualValidationResult)
 	}
 
-	t.Logf("For 1M template items validation took %d ms", time.Now().Sub(start).Milliseconds())
+	t.Logf("For %d items template items validation took %d ms", givenNumberOfRecords, time.Now().Sub(start).Milliseconds())
 }

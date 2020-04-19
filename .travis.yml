@@ -1,8 +1,20 @@
+env:
+  global:
+    - CC_TEST_REPORTER_ID=67169f00e8716ce640b010fdb1fa1dd40b36275ef2175d14a03ab0cf0cc2ee4a
+
 language: go
 go:
   - 1.13.8
   - master
 
+before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+
 script:
-  - go test -v ./...
+  - go test -v -coverprofile c.out ./...
   - go build -i github.com/vkrava4/curlson
+
+after_script:
+  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT

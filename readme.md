@@ -9,14 +9,9 @@ frequent concurrent requests executions. This makes Curlson a perfect candidate 
 testing scenarios.
 
 
-### Key Features:
-- Document and request templating
-- Multithreading
-- Performance monitoring / Statistics 
-- Results reporting 
-- Tracing
-- and many others ... 
+### Latest Status (Master Branch):
 
+[![Build Status](https://travis-ci.org/vkrava4/curlson.svg?branch=master)](https://travis-ci.org/vkrava4/curlson)
 
 ### Disclaimer
 TODO:
@@ -24,10 +19,7 @@ TODO:
 ### Installation
 TODO:
 
-### Features and Commands
-TODO:
-
-### Logs and Events
+### User Guide
 TODO:
 
 ### Contribution

@@ -23,10 +23,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
-	"github.com/vkrava4/curlson/cmd/util"
+	"github.com/vkrava4/curlson/app"
+	"github.com/vkrava4/curlson/util"
 	"net/http"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
@@ -34,26 +33,38 @@ import (
 var count int
 var sleepMs int
 var threads int
-var duration int
+var maxDuration int
 var template string
 var persistLogs = false
 var verbose = false
 var loggingSupported = false
-var templateEnabled = false
+
+var appConf = &app.Configuration{}
 
 var getCmd = &cobra.Command{
 	Use:   "get <URL> [flags]",
 	Short: "Performs HTTP GET request(s) based on specified options",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		ValidateInput()
+		var getValidator = &util.GetValidator{}
+		var validatorEntity = getValidator.
+			AddRequestCount(count).
+			AddThreads(threads).
+			AddUrl(args[0]).
+			AddTemplate(template).
+			AddSleep(sleepMs).
+			AddMaxDuration(maxDuration).
+			WithAppConfiguration(appConf).
+			Entity()
+
+		validatorEntity.Validate().Process()
+
 		runGet(args[0])
 	},
 }
 
 var yellowColor = color.New(color.FgYellow)
 var greenColor = color.New(color.FgGreen)
-var redColor = color.New(color.FgRed)
 
 var log = logrus.New()
 
@@ -63,58 +74,10 @@ func init() {
 	getCmd.Flags().IntVarP(&threads, "threads", "t", 1, "A number of concurrent GET requests")
 	getCmd.Flags().IntVarP(&count, "count", "c", 1, "A number of GET requests per single thread")
 	getCmd.Flags().IntVarP(&sleepMs, "sleep", "s", 0, "A delay in millis after each GET requests. Doesn't impact performance report results if set (default 0)")
-	getCmd.Flags().IntVarP(&duration, "duration", "d", 0, "A maximum duration in seconds by reaching which requests execution will be terminated regardless of a 'count' flag value. When the value set to '0' this flag is ignored (default 0)")
+	getCmd.Flags().IntVarP(&maxDuration, "duration-max", "D", 0, "A maximum duration in seconds by reaching which requests execution will be terminated regardless of a 'count' flag value. When the value set to '0' this flag is ignored (default 0)")
 	getCmd.Flags().StringVarP(&template, "template-file", "T", "", "")
 	getCmd.Flags().BoolVarP(&persistLogs, "persist-logs", "p", false, "A flag which defines whether execution log files will be persisted or automatically cleaned up")
 	getCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "A flag which defines whether additional execution information such as log creations or other actions will be logged in console output")
-}
-
-func ValidateInput() {
-	var validationResults = ""
-	if threads < 1 {
-		validationResults = fmt.Sprintf(validationResults+"\n - The number of threads has to be grater or equal to 1. Currently it's: '%d'", threads)
-	}
-
-	if count < 1 {
-		validationResults = fmt.Sprintf(validationResults+"\n - The amount of requests per thread has to be grater or equal to 1. Currently it's: '%d'", count)
-	}
-
-	if sleepMs < 0 {
-		validationResults = fmt.Sprintf(validationResults+"\n - The delay in millis per request has to be grater or equal to 0. Currently it's: '%d' millis", sleepMs)
-	}
-
-	if duration < 0 {
-		validationResults = fmt.Sprintf(validationResults+"\n - The maximum execution duration in seconds has to be grater or equal to 0. Currently it's: '%d' seconds", duration)
-	}
-
-	if template != "" {
-		var absTemplatePath, absError = filepath.Abs(template)
-		if absError != nil {
-			validationResults = fmt.Sprintf(validationResults+"\n - An error occured while identifying template file path: %s", absError.Error())
-		}
-
-		if util.FileExists(absTemplatePath) {
-			var templateFile, errOpenTemplate = os.OpenFile(template, os.O_RDONLY, 0666)
-
-			if errOpenTemplate != nil {
-				validationResults = fmt.Sprintf(validationResults+"\n - An error occured while openning template file: %s", errOpenTemplate.Error())
-			} else {
-				template = absTemplatePath
-				var errCloseTemplate = templateFile.Close()
-				if errCloseTemplate != nil {
-					validationResults = fmt.Sprintf(validationResults+"\n - An error occured while working with template file: %s", errCloseTemplate.Error())
-				}
-				templateEnabled = true
-			}
-		} else {
-			validationResults = fmt.Sprintf(validationResults+"\n - The specyfied template file: '%s' can not be found.", absTemplatePath)
-		}
-	}
-
-	if len(validationResults) > 0 {
-		fmt.Println(redColor.Sprintf(validationResults))
-		os.Exit(1)
-	}
 }
 
 func runGet(url string) {
@@ -129,7 +92,7 @@ func runGet(url string) {
 	var multiProgress = mpb.New(mpb.WithWaitGroup(&waitGroup))
 	waitGroup.Add(threads)
 
-	var linesCount = util.CountLines(&template, &templateEnabled, log, &loggingSupported)
+	var linesCount = util.CountLines(template, appConf.Template.Enabled)
 	for i := 0; i < len(executionResults); i++ {
 		util.InfoLog(fmt.Sprintf("Setting up new thread with id: %d", i), log, &loggingSupported)
 		go ThreadStart(i, url, executionResults, multiProgress, &waitGroup, linesCount)
@@ -159,13 +122,13 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 	)
 	defer waitGroup.Done()
 
-	var maxExecutionEndTime = time.Now().Add(time.Second * time.Duration(duration))
+	var maxExecutionEndTime = time.Now().Add(time.Second * time.Duration(maxDuration))
 	util.InfoLog(fmt.Sprintf("Determined maximum execution duration time: %#v for thread with id: %d", maxExecutionEndTime, threadId), log, &loggingSupported)
 
 	for i := 0; i < count; i++ {
 		var requestStartTime = time.Now()
 		var getUrl string
-		if templateEnabled && linesCount > 0 {
+		if appConf.Template.Enabled && linesCount > 0 {
 			var lineNum, templateLine = util.ReadRandomLine(template, linesCount)
 			util.InfoLog(fmt.Sprintf("Received template line %s from the line %d", templateLine, lineNum), log, &loggingSupported)
 			var updatedUrl, errPrepareUrl = util.PrepareUrl(url, templateLine)
@@ -200,8 +163,8 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 			util.InfoLog(fmt.Sprintf("Resumed thread with id: %d after sleeping for %d millis", threadId, sleepMs), log, &loggingSupported)
 		}
 
-		if duration != 0 && maxExecutionEndTime.Before(time.Now()) {
-			util.WarnLog(fmt.Sprintf("Exceeded maximum execution duration of %d second(s). Terminating execution of thread with id: %d as it did not complete before time: %s", duration, threadId, maxExecutionEndTime.Format(time.RFC3339)), log, &loggingSupported)
+		if maxDuration != 0 && maxExecutionEndTime.Before(time.Now()) {
+			util.WarnLog(fmt.Sprintf("Exceeded maximum execution duration of %d second(s). Terminating execution of thread with id: %d as it did not complete before time: %s", maxDuration, threadId, maxExecutionEndTime.Format(time.RFC3339)), log, &loggingSupported)
 			progress.SetTotal(progress.Current(), true)
 			break
 		}

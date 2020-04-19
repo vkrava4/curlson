@@ -70,9 +70,11 @@ func TestContainsTemplatePlaceholders(t *testing.T) {
 func TestParseAndValidateUrlForValidStrings(t *testing.T) {
 	var validUrls = []string{
 		"http://localhost",
+		"http://127.0.0.1",
 		"https://localhost:9999",
 		"http://localhost/path/path/path",
 		"http://localhost/path?data=1&data2=2",
+		"http://8.8.8.8/path?data=1&data2=2",
 	}
 
 	for i, url := range validUrls {

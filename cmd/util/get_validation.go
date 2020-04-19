@@ -99,7 +99,7 @@ func validateTemplate(template string, url string, result *ValidationResult, con
 	if template == "" {
 		if ContainsTemplatePlaceholders(url) {
 			result.valid = false
-			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, template, "URL address contains placeholder(s) for missing template file"))
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, url, "URL address contains placeholder(s) for missing template file"))
 			return
 		}
 	} else {
@@ -117,9 +117,12 @@ func validateTemplate(template string, url string, result *ValidationResult, con
 				result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
 				return
 			} else {
-				_ = templateFile.Close()
-
 				// TODO validate whether ALL file lines match to URL
+
+				_ = templateFile.Close()
+				if !ContainsTemplatePlaceholders(url) {
+					result.warnMessages = append(result.warnMessages, "")
+				}
 
 				if conf != nil {
 					conf.templatingEnabled = true

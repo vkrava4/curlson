@@ -24,7 +24,7 @@ func TestNotPrepareUrlWithRegularAttributesIfContainsTemplatePlaceholders(t *tes
 	var expectedUrlInError = "http://localhost:8080/get/echo/with_status_param_and_request_param/Test/Test/#T{2}?data=Test2"
 	var _, err = PrepareUrl(givenUrlTemplate, givenValueLine)
 
-	if err != nil && err.Error() == fmt.Sprintf("Giving URL: '%s' has unresolved placeholders", expectedUrlInError) {
+	if err != nil && err.Error() == fmt.Sprintf("Given URL: '%s' has unresolved placeholders", expectedUrlInError) {
 	} else {
 		t.Error("PrepareUrl result is incorrect for this test case, it should have an error")
 	}

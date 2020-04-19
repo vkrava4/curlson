@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/vkrava4/curlson/app"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,11 +12,13 @@ import (
 )
 
 func TestValidatePositiveThreadsWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 999
 	var getValidator = &GetValidator{}
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -26,11 +29,13 @@ func TestValidatePositiveThreadsWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidateNegativeThreadsWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenZeroThreads = -1
 	var givenPositiveRequestCount = 999
 	var getValidator = &GetValidator{}
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenZeroThreads).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -42,11 +47,13 @@ func TestValidateNegativeThreadsWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidateZeroThreadsWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenZeroThreads = 0
 	var givenPositiveRequestCount = 999
 	var getValidator = &GetValidator{}
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenZeroThreads).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -58,11 +65,13 @@ func TestValidateZeroThreadsWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidatePositiveRequestCountWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 1
 	var getValidator = &GetValidator{}
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -73,11 +82,13 @@ func TestValidatePositiveRequestCountWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidateZeroRequestCountWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenZeroRequestCount = 0
 	var getValidator = &GetValidator{}
 	var validatorEntity = getValidator.AddRequestCount(givenZeroRequestCount).
 		AddThreads(givenPositiveThreads).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -89,11 +100,13 @@ func TestValidateZeroRequestCountWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidateNegativeRequestCountWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenNegativeRequestCount = -1
 	var getValidator = &GetValidator{}
 	var validatorEntity = getValidator.AddRequestCount(givenNegativeRequestCount).
 		AddThreads(givenPositiveThreads).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -105,6 +118,7 @@ func TestValidateNegativeRequestCountWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidatePositiveSleepDelayWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 1
 	var givenPositiveDelay = 1
@@ -113,6 +127,7 @@ func TestValidatePositiveSleepDelayWithOkOtherFlags(t *testing.T) {
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
 		AddSleep(givenPositiveDelay).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -123,6 +138,7 @@ func TestValidatePositiveSleepDelayWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidateZeroSleepDelayWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 1
 	var givenZeroDelay = 0
@@ -131,6 +147,7 @@ func TestValidateZeroSleepDelayWithOkOtherFlags(t *testing.T) {
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
 		AddSleep(givenZeroDelay).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -141,6 +158,7 @@ func TestValidateZeroSleepDelayWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidateNegativeSleepDelayWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 1
 	var givenNegativeDelay = -1
@@ -149,6 +167,7 @@ func TestValidateNegativeSleepDelayWithOkOtherFlags(t *testing.T) {
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
 		AddSleep(givenNegativeDelay).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -160,6 +179,7 @@ func TestValidateNegativeSleepDelayWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidatePositiveMaxDurationWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 1
 	var givenMaxDuration = 1
@@ -168,6 +188,7 @@ func TestValidatePositiveMaxDurationWithOkOtherFlags(t *testing.T) {
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
 		AddMaxDuration(givenMaxDuration).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -178,6 +199,7 @@ func TestValidatePositiveMaxDurationWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidateZeroMaxDurationWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 1
 	var givenMaxDuration = 0
@@ -186,6 +208,7 @@ func TestValidateZeroMaxDurationWithOkOtherFlags(t *testing.T) {
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
 		AddMaxDuration(givenMaxDuration).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -196,6 +219,7 @@ func TestValidateZeroMaxDurationWithOkOtherFlags(t *testing.T) {
 }
 
 func TestValidateNegativeMaxDurationWithOkOtherFlags(t *testing.T) {
+	var givenUrl = "http://localhost:8080"
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 1
 	var givenMaxDuration = -12
@@ -204,12 +228,34 @@ func TestValidateNegativeMaxDurationWithOkOtherFlags(t *testing.T) {
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
 		AddMaxDuration(givenMaxDuration).
+		AddUrl(givenUrl).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
 
 	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
 		fmt.Sprintf(MsgShouldBePositiveOrZero, "Maximum execution duration property", givenMaxDuration) {
+		t.Errorf("Unexpected validation result %v", actualValidationResult)
+	}
+}
+
+func TestValidateEmptyTemplateAndWithEmptyUrl_WithOkOtherFlags(t *testing.T) {
+	var givenPositiveThreads = 999
+	var givenPositiveRequestCount = 666
+	var givenEmptyTemplate = ""
+	var givenEmptyUrl = ""
+
+	var getValidator = &GetValidator{}
+	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
+		AddThreads(givenPositiveThreads).
+		AddUrl(givenEmptyUrl).
+		AddTemplate(givenEmptyTemplate).
+		Entity()
+
+	var actualValidationResult = validatorEntity.Validate()
+
+	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
+		fmt.Sprintf(MsgUrlAddressInvalidWithReason, givenEmptyUrl, fmt.Sprintf("A string: '%s' is not valid URL", givenEmptyUrl)) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }
@@ -230,7 +276,7 @@ func TestValidateEmptyTemplateAndUrlWithPlaceholders_WithOkOtherFlags(t *testing
 	var actualValidationResult = validatorEntity.Validate()
 
 	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
-		fmt.Sprintf(MsgUrlAddressInvalidWithReason, givenUrlWithPlaceholders, "URL address contains placeholder(s) for missing template file") {
+		fmt.Sprintf(MsgUrlAddressInvalidWithReason, givenUrlWithPlaceholders, fmt.Sprintf("Given URL: '%s' has unresolved placeholders", givenUrlWithPlaceholders)) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }
@@ -268,7 +314,7 @@ func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags(t *test
 	_ = ioutil.WriteFile(testFileAbsPath, []byte("TEST,ONE\n"), filesMode)
 
 	var getValidator = &GetValidator{}
-	var appConf = &AppConfiguration{}
+	var appConf = &app.Configuration{}
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
 		AddUrl(givenUrlWithPlaceholders).
@@ -283,7 +329,7 @@ func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags(t *test
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 
-	if !appConf.template.enabled || appConf.template.size != 1 || appConf.template.path != testFileAbsPath {
+	if !appConf.Template.Enabled || appConf.Template.Size != 1 || appConf.Template.Path != testFileAbsPath {
 		t.Errorf("Unexpected app configuration result %v", actualValidationResult)
 	}
 }
@@ -306,7 +352,7 @@ func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags_ForLarg
 
 	var start = time.Now()
 	var getValidator = &GetValidator{}
-	var appConf = &AppConfiguration{}
+	var appConf = &app.Configuration{}
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
 		AddUrl(givenUrlWithPlaceholders).
@@ -321,7 +367,7 @@ func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags_ForLarg
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 
-	if !appConf.template.enabled || appConf.template.size != givenNumberOfRecords || appConf.template.path != testFileAbsPath {
+	if !appConf.Template.Enabled || appConf.Template.Size != givenNumberOfRecords || appConf.Template.Path != testFileAbsPath {
 		t.Errorf("Unexpected app configuration result %v", actualValidationResult)
 	}
 

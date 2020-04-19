@@ -3,6 +3,7 @@ package util
 import (
 	"bufio"
 	"fmt"
+	"github.com/vkrava4/curlson/app"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,7 +18,7 @@ type GetValidatorBuilder interface {
 	AddSleep(sleep int) GetValidatorBuilder
 	AddMaxDuration(sleep int) GetValidatorBuilder
 
-	WithAppConfiguration(conf *AppConfiguration) GetValidatorBuilder
+	WithAppConfiguration(conf *app.Configuration) GetValidatorBuilder
 
 	Entity() ValidatorEntity
 }
@@ -56,13 +57,13 @@ func (b *GetValidator) AddMaxDuration(maxDuration int) GetValidatorBuilder {
 	return b
 }
 
-func (b *GetValidator) WithAppConfiguration(conf *AppConfiguration) GetValidatorBuilder {
-	if conf.template == nil {
-		conf.template = &TemplateConfiguration{}
+func (b *GetValidator) WithAppConfiguration(conf *app.Configuration) GetValidatorBuilder {
+	if conf.Template == nil {
+		conf.Template = &app.TemplateConfiguration{}
 	}
 
-	if conf.logs == nil {
-		conf.logs = &LogConfiguration{}
+	if conf.Logs == nil {
+		conf.Logs = &app.LogConfiguration{}
 	}
 
 	b.entity.conf = conf
@@ -84,7 +85,7 @@ func (e *ValidatorEntity) Validate() *ValidationResult {
 	validatePositiveOrZero("Delay in millis property", e.sleep, result)
 	validatePositiveOrZero("Maximum execution duration property", e.maxDuration, result)
 
-	validateTemplate(e.template, e.url, result)
+	validateUrlForTemplate(e.template, e.url, result)
 
 	return result
 }
@@ -103,15 +104,12 @@ func validatePositiveOrZero(description string, value int, result *ValidationRes
 	}
 }
 
-func validateUrl(urlAddress string, result *ValidationResult) {
-
-}
-
-func validateTemplate(template string, urlAddress string, result *ValidationResult) {
+func validateUrlForTemplate(template string, urlAddress string, result *ValidationResult) {
 	if template == "" {
-		if ContainsTemplatePlaceholders(urlAddress) {
+		var _, errPrepareUrl = PrepareUrl(urlAddress, "")
+		if errPrepareUrl != nil {
 			result.valid = false
-			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, urlAddress, "URL address contains placeholder(s) for missing template file"))
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, urlAddress, errPrepareUrl.Error()))
 			return
 		}
 	} else {
@@ -166,9 +164,9 @@ func validateTemplate(template string, urlAddress string, result *ValidationResu
 
 				_ = templateFile.Close()
 				if templateSize > 0 && result.valid && result.conf != nil {
-					result.conf.template.enabled = true
-					result.conf.template.path = absTemplatePath
-					result.conf.template.size = templateSize
+					result.conf.Template.Enabled = true
+					result.conf.Template.Path = absTemplatePath
+					result.conf.Template.Size = templateSize
 
 				}
 			}

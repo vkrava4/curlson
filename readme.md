@@ -12,7 +12,8 @@ testing scenarios.
 ### Latest Status (Master Branch):
 
 [![Build Status](https://travis-ci.org/vkrava4/curlson.svg?branch=master)](https://travis-ci.org/vkrava4/curlson)
-
+[![Maintainability](https://api.codeclimate.com/v1/badges/882d99e43f1a25168323/maintainability)](https://codeclimate.com/github/vkrava4/curlson/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/882d99e43f1a25168323/test_coverage)](https://codeclimate.com/github/vkrava4/curlson/test_coverage)
 ### Disclaimer
 TODO:
 

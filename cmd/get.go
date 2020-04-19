@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
-	"github.com/vkrava4/curlson/cmd/util"
+	"github.com/vkrava4/curlson/util"
 	"net/http"
 	"os"
 	"path/filepath"

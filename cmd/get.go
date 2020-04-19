@@ -129,7 +129,7 @@ func runGet(url string) {
 	var multiProgress = mpb.New(mpb.WithWaitGroup(&waitGroup))
 	waitGroup.Add(threads)
 
-	var linesCount = util.CountLines(&template, &templateEnabled, log, &loggingSupported)
+	var linesCount = util.CountLines(template, templateEnabled)
 	for i := 0; i < len(executionResults); i++ {
 		util.InfoLog(fmt.Sprintf("Setting up new thread with id: %d", i), log, &loggingSupported)
 		go ThreadStart(i, url, executionResults, multiProgress, &waitGroup, linesCount)

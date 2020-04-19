@@ -2,10 +2,12 @@ package util
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidatePositiveThreadsWithOkOtherFlags(t *testing.T) {
@@ -258,18 +260,20 @@ func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags(t *test
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 666
 	var givenFoundTemplate = "test.file"
-	var givenUrlWithPlaceholders = "http://localhost:1111/get/#TE{1}/test/123"
+	var givenUrlWithPlaceholders = "http://localhost:1111/get/#T{0}/test/123?q=#T{1}"
 
 	// setup the file
 	var testFileAbsPath, _ = filepath.Abs(givenFoundTemplate)
-	var testFile, _ = os.Create(testFileAbsPath)
-	_ = testFile.Close()
+
+	_ = ioutil.WriteFile(testFileAbsPath, []byte("TEST,ONE\n"), filesMode)
 
 	var getValidator = &GetValidator{}
+	var appConf = &AppConfiguration{}
 	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
 		AddThreads(givenPositiveThreads).
 		AddUrl(givenUrlWithPlaceholders).
 		AddTemplate(givenFoundTemplate).
+		WithAppConfiguration(appConf).
 		Entity()
 
 	var actualValidationResult = validatorEntity.Validate()
@@ -278,4 +282,48 @@ func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags(t *test
 	if !actualValidationResult.valid || len(actualValidationResult.errMessages) > 0 {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
+
+	if !appConf.template.enabled || appConf.template.size != 1 || appConf.template.path != testFileAbsPath {
+		t.Errorf("Unexpected app configuration result %v", actualValidationResult)
+	}
+}
+
+func TestValidateExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags_ForLargeDataSet(t *testing.T) {
+	var givenNumberOfRecords = 100000
+
+	var givenPositiveThreads = 999
+	var givenPositiveRequestCount = 666
+	var givenFoundTemplate = "test.file"
+	var givenUrlWithPlaceholders = "http://localhost:1111/get/#T{6}/test/123?q=#T{1}"
+
+	// setup the file
+	var testFileAbsPath, _ = filepath.Abs(givenFoundTemplate)
+	var testFile, _ = os.Create(testFileAbsPath)
+
+	for i := 0; i < givenNumberOfRecords; i++ {
+		_, _ = testFile.WriteString(fmt.Sprintf("TEST%d,ONE%d,THREE,FOUR,test123,777,VLADKRAVA\n", i, i))
+	}
+
+	var start = time.Now()
+	var getValidator = &GetValidator{}
+	var appConf = &AppConfiguration{}
+	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
+		AddThreads(givenPositiveThreads).
+		AddUrl(givenUrlWithPlaceholders).
+		AddTemplate(givenFoundTemplate).
+		WithAppConfiguration(appConf).
+		Entity()
+
+	var actualValidationResult = validatorEntity.Validate()
+
+	_ = os.Remove(testFileAbsPath)
+	if !actualValidationResult.valid || len(actualValidationResult.errMessages) > 0 {
+		t.Errorf("Unexpected validation result %v", actualValidationResult)
+	}
+
+	if !appConf.template.enabled || appConf.template.size != givenNumberOfRecords || appConf.template.path != testFileAbsPath {
+		t.Errorf("Unexpected app configuration result %v", actualValidationResult)
+	}
+
+	t.Logf("For 1M template items validation took %d ms", time.Now().Sub(start).Milliseconds())
 }

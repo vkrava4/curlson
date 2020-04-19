@@ -1,9 +1,12 @@
 package util
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type GetValidatorBuilder interface {
@@ -54,6 +57,8 @@ func (b *GetValidator) AddMaxDuration(maxDuration int) GetValidatorBuilder {
 }
 
 func (b *GetValidator) WithAppConfiguration(conf *AppConfiguration) GetValidatorBuilder {
+	conf.template = &TemplateConfiguration{}
+	conf.logs = &LogConfiguration{}
 	b.entity.conf = conf
 	return b
 }
@@ -65,6 +70,7 @@ func (b *GetValidator) Entity() ValidatorEntity {
 func (e *ValidatorEntity) Validate() *ValidationResult {
 	var result = &ValidationResult{
 		valid: true,
+		conf:  e.conf,
 	}
 
 	validatePositive("Amount of threads", e.threads, result)
@@ -72,7 +78,7 @@ func (e *ValidatorEntity) Validate() *ValidationResult {
 	validatePositiveOrZero("Delay in millis property", e.sleep, result)
 	validatePositiveOrZero("Maximum execution duration property", e.maxDuration, result)
 
-	validateTemplate(e.template, e.url, result, e.conf)
+	validateTemplate(e.template, e.url, result)
 
 	return result
 }
@@ -95,7 +101,7 @@ func validateUrl(urlAddress string, result *ValidationResult) {
 
 }
 
-func validateTemplate(template string, url string, result *ValidationResult, conf *AppConfiguration) {
+func validateTemplate(template string, url string, result *ValidationResult) {
 	if template == "" {
 		if ContainsTemplatePlaceholders(url) {
 			result.valid = false
@@ -111,21 +117,53 @@ func validateTemplate(template string, url string, result *ValidationResult, con
 		}
 
 		if FileExists(absTemplatePath) {
-			var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, defaultMode)
+			var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, filesMode)
 			if errOpenFile != nil {
 				result.valid = false
 				result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
 				return
 			} else {
-				// TODO validate whether ALL file lines match to URL
-
-				_ = templateFile.Close()
+				var templateSize = 0
 				if !ContainsTemplatePlaceholders(url) {
 					result.warnMessages = append(result.warnMessages, "")
+				} else {
+					var reader = bufio.NewReader(templateFile)
+					for {
+						var line, errReadLine = reader.ReadString(filesEndLineDelimiter)
+
+						switch {
+						case errReadLine == io.EOF:
+							break
+
+						case errReadLine != nil:
+							result.valid = false
+							templateSize = -1
+							break
+						}
+
+						if len(strings.TrimSpace(line)) == 0 {
+							break
+						} else {
+							line = strings.TrimSuffix(line, string(filesEndLineDelimiter))
+							var _, errPrepareUrl = PrepareUrl(url, line)
+
+							if errPrepareUrl != nil {
+								result.valid = false
+								result.errMessages = append(result.errMessages, errPrepareUrl.Error())
+								break
+							}
+
+							templateSize++
+						}
+					}
 				}
 
-				if conf != nil {
-					conf.templatingEnabled = true
+				_ = templateFile.Close()
+				if templateSize > 0 && result.valid && result.conf != nil {
+					result.conf.template.enabled = true
+					result.conf.template.path = absTemplatePath
+					result.conf.template.size = templateSize
+
 				}
 			}
 		} else {

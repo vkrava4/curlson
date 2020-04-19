@@ -16,7 +16,7 @@ func TestValidatePositiveThreadsWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if !actualValidationResult.valid || len(actualValidationResult.messages) > 0 {
+	if !actualValidationResult.valid || len(actualValidationResult.errMessages) > 0 {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }
@@ -31,7 +31,7 @@ func TestValidateNegativeThreadsWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if actualValidationResult.valid || strings.Join(actualValidationResult.messages, ",") !=
+	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
 		fmt.Sprintf(MsgShouldBePositive, "Amount of threads", givenZeroThreads) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
@@ -47,7 +47,7 @@ func TestValidateZeroThreadsWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if actualValidationResult.valid || strings.Join(actualValidationResult.messages, ",") !=
+	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
 		fmt.Sprintf(MsgShouldBePositive, "Amount of threads", givenZeroThreads) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
@@ -63,7 +63,7 @@ func TestValidatePositiveRequestCountWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if !actualValidationResult.valid || len(actualValidationResult.messages) > 0 {
+	if !actualValidationResult.valid || len(actualValidationResult.errMessages) > 0 {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }
@@ -78,7 +78,7 @@ func TestValidateZeroRequestCountWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if actualValidationResult.valid || strings.Join(actualValidationResult.messages, ",") !=
+	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
 		fmt.Sprintf(MsgShouldBePositive, "Amount of requests per thread", givenZeroRequestCount) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
@@ -94,7 +94,7 @@ func TestValidateNegativeRequestCountWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if actualValidationResult.valid || strings.Join(actualValidationResult.messages, ",") !=
+	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
 		fmt.Sprintf(MsgShouldBePositive, "Amount of requests per thread", givenNegativeRequestCount) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
@@ -113,7 +113,7 @@ func TestValidatePositiveSleepDelayWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if !actualValidationResult.valid || len(actualValidationResult.messages) > 0 {
+	if !actualValidationResult.valid || len(actualValidationResult.errMessages) > 0 {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }
@@ -131,7 +131,7 @@ func TestValidateZeroSleepDelayWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if !actualValidationResult.valid || len(actualValidationResult.messages) > 0 {
+	if !actualValidationResult.valid || len(actualValidationResult.errMessages) > 0 {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }
@@ -149,7 +149,7 @@ func TestValidateNegativeSleepDelayWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if actualValidationResult.valid || strings.Join(actualValidationResult.messages, ",") !=
+	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
 		fmt.Sprintf(MsgShouldBePositiveOrZero, "Delay in millis property", givenNegativeDelay) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
@@ -168,7 +168,7 @@ func TestValidatePositiveMaxDurationWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if !actualValidationResult.valid || len(actualValidationResult.messages) > 0 {
+	if !actualValidationResult.valid || len(actualValidationResult.errMessages) > 0 {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }
@@ -186,7 +186,7 @@ func TestValidateZeroMaxDurationWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if !actualValidationResult.valid || len(actualValidationResult.messages) > 0 {
+	if !actualValidationResult.valid || len(actualValidationResult.errMessages) > 0 {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }
@@ -204,7 +204,7 @@ func TestValidateNegativeMaxDurationWithOKOtherFlags(t *testing.T) {
 
 	var actualValidationResult = validatorEntity.Validate()
 
-	if actualValidationResult.valid || strings.Join(actualValidationResult.messages, ",") !=
+	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
 		fmt.Sprintf(MsgShouldBePositiveOrZero, "Maximum execution duration property", givenMaxDuration) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}

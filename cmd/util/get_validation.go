@@ -1,6 +1,10 @@
 package util
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
 
 type GetValidatorBuilder interface {
 	AddUrl(getUrl string) GetValidatorBuilder
@@ -9,6 +13,8 @@ type GetValidatorBuilder interface {
 	AddRequestCount(requestCount int) GetValidatorBuilder
 	AddSleep(sleep int) GetValidatorBuilder
 	AddMaxDuration(sleep int) GetValidatorBuilder
+
+	WithAppConfiguration(conf *AppConfiguration) GetValidatorBuilder
 
 	Entity() ValidatorEntity
 }
@@ -47,6 +53,11 @@ func (b *GetValidator) AddMaxDuration(maxDuration int) GetValidatorBuilder {
 	return b
 }
 
+func (b *GetValidator) WithAppConfiguration(conf *AppConfiguration) GetValidatorBuilder {
+	b.entity.conf = conf
+	return b
+}
+
 func (b *GetValidator) Entity() ValidatorEntity {
 	return b.entity
 }
@@ -61,19 +72,63 @@ func (e *ValidatorEntity) Validate() *ValidationResult {
 	validatePositiveOrZero("Delay in millis property", e.sleep, result)
 	validatePositiveOrZero("Maximum execution duration property", e.maxDuration, result)
 
+	validateTemplate(e.template, e.url, result, e.conf)
+
 	return result
 }
 
 func validatePositive(description string, value int, result *ValidationResult) {
 	if value < 1 {
 		result.valid = false
-		result.messages = append(result.messages, fmt.Sprintf(MsgShouldBePositive, description, value))
+		result.errMessages = append(result.errMessages, fmt.Sprintf(MsgShouldBePositive, description, value))
 	}
 }
 
 func validatePositiveOrZero(description string, value int, result *ValidationResult) {
 	if value < 0 {
 		result.valid = false
-		result.messages = append(result.messages, fmt.Sprintf(MsgShouldBePositiveOrZero, description, value))
+		result.errMessages = append(result.errMessages, fmt.Sprintf(MsgShouldBePositiveOrZero, description, value))
+	}
+}
+
+func validateUrl(urlAddress string, result *ValidationResult) {
+
+}
+
+func validateTemplate(template string, url string, result *ValidationResult, conf *AppConfiguration) {
+	if template == "" {
+		if ContainsTemplatePlaceholders(url) {
+			result.valid = false
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, template, "URL address contains placeholder(s) for missing template file"))
+			return
+		}
+	} else {
+		var absTemplatePath, errAbsFile = filepath.Abs(template)
+		if errAbsFile != nil {
+			result.valid = false
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplatePathInvalidWithReason, template, errAbsFile.Error()))
+			return
+		}
+
+		if FileExists(absTemplatePath) {
+			var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, defaultMode)
+			if errOpenFile != nil {
+				result.valid = false
+				result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
+				return
+			} else {
+				_ = templateFile.Close()
+
+				// TODO validate whether ALL file lines match to URL
+
+				if conf != nil {
+					conf.templatingEnabled = true
+				}
+			}
+		} else {
+			result.valid = false
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplateNotFound, template))
+			return
+		}
 	}
 }

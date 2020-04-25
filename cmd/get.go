@@ -18,8 +18,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/Sirupsen/logrus"
 	"github.com/fatih/color"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb"
 	"github.com/vbauerster/mpb/decor"
@@ -140,8 +140,7 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 			var updatedUrl, errPrepareUrl = util.PrepareUrl(url, templateLine)
 			if errPrepareUrl != nil {
 				util.ErrorLog("Can not make GET request with broken URL. Skipping this iteration", appConf.Logs)
-				progress.Increment()
-				progress.DecoratorEwmaUpdate(time.Since(requestStartTime))
+				progress.IncrBy(1, time.Since(requestStartTime))
 				continue
 			}
 
@@ -159,8 +158,7 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 			util.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", getUrl, getResponseErr.Error()), appConf.Logs)
 		}
 
-		progress.Increment()
-		progress.DecoratorEwmaUpdate(time.Since(requestStartTime))
+		progress.IncrBy(1, time.Since(requestStartTime))
 
 		if sleepMs > 0 {
 			util.InfoLog(fmt.Sprintf("Sleeping thread with id: %d for %d millis before the next itteration", threadId, sleepMs), appConf.Logs)

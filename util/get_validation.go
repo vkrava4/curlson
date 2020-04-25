@@ -112,42 +112,44 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, urlAddress, errPrepareUrl.Error()))
 			return
 		}
-	} else {
-		var absTemplatePath, errAbsFile = filepath.Abs(template)
-		if errAbsFile != nil {
+
+		return
+	}
+
+	var absTemplatePath, errAbsFile = filepath.Abs(template)
+	if errAbsFile != nil {
+		result.valid = false
+		result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplatePathInvalidWithReason, template, errAbsFile.Error()))
+		return
+	}
+
+	if fileExists(absTemplatePath) {
+		var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, filesMode)
+		if errOpenFile != nil {
 			result.valid = false
-			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplatePathInvalidWithReason, template, errAbsFile.Error()))
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
 			return
-		}
-
-		if fileExists(absTemplatePath) {
-			var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, filesMode)
-			if errOpenFile != nil {
-				result.valid = false
-				result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
-				return
-			} else {
-				var templateSize, errValidateUrl = validateUrlForExistingTemplate(templateFile, urlAddress, result.warnMessages)
-				_ = templateFile.Close()
-
-				if errValidateUrl != nil {
-					result.valid = false
-					result.errMessages = append(result.errMessages, errValidateUrl.Error())
-					return
-				}
-
-				if templateSize > 0 && result.valid && result.conf != nil {
-					result.conf.Template.Enabled = true
-					result.conf.Template.Path = absTemplatePath
-					result.conf.Template.Size = templateSize
-
-				}
-			}
 		} else {
-			result.valid = false
-			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplateNotFound, template))
-			return
+			var templateSize, errValidateUrl = validateUrlForExistingTemplate(templateFile, urlAddress, result.warnMessages)
+			_ = templateFile.Close()
+
+			if errValidateUrl != nil {
+				result.valid = false
+				result.errMessages = append(result.errMessages, errValidateUrl.Error())
+				return
+			}
+
+			if templateSize > 0 && result.valid && result.conf != nil {
+				result.conf.Template.Enabled = true
+				result.conf.Template.Path = absTemplatePath
+				result.conf.Template.Size = templateSize
+
+			}
 		}
+	} else {
+		result.valid = false
+		result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplateNotFound, template))
+		return
 	}
 }
 

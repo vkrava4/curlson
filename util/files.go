@@ -6,13 +6,15 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
 var (
-	fileBuffer            = 32 * 1024
-	filesMode             = os.FileMode(0666)
-	filesEndLineDelimiter = byte('\n')
+	fileBuffer               = 32 * 1024
+	filesMode                = os.FileMode(0666)
+	filesEndLineDelimiter    = byte('\n')
+	defaultApplicationFolder = ".curlson"
 )
 
 func CountLinesForFile(file *os.File) int {
@@ -88,10 +90,36 @@ func ReadLine(templateFile string, lineNumber int) string {
 	}
 }
 
-func FileExists(path string) bool {
-	if _, isNotExistErr := os.Stat(path); !os.IsNotExist(isNotExistErr) {
-		return true
+func fileExists(path string) bool {
+	if stats, isNotExistErr := os.Stat(path); !os.IsNotExist(isNotExistErr) {
+		return !stats.IsDir()
 	} else {
 		return false
+	}
+}
+
+func folderExists(path string) bool {
+	if stats, isNotExistErr := os.Stat(path); !os.IsNotExist(isNotExistErr) {
+		return stats.IsDir()
+	} else {
+		return false
+	}
+}
+
+func getApplicationDirectory() (string, error) {
+	var homeDir, errHomeDir = os.UserHomeDir()
+
+	if errHomeDir != nil {
+		return "", errHomeDir
+	} else {
+		var defaultFolderPath = filepath.Join(homeDir, defaultApplicationFolder)
+		if !folderExists(defaultFolderPath) {
+			var mkdirErr = os.Mkdir(defaultFolderPath, os.ModePerm)
+			if mkdirErr != nil {
+				return "", mkdirErr
+			}
+		}
+
+		return defaultFolderPath, nil
 	}
 }

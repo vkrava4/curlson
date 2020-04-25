@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/vkrava4/curlson.svg?branch=master)](https://travis-ci.org/vkrava4/curlson)
-[![Maintainability](https://api.codeclimate.com/v1/badges/882d99e43f1a25168323/maintainability)](https://codeclimate.com/github/vkrava4/curlson/maintainability)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/882d99e43f1a25168323/test_coverage)](https://codeclimate.com/github/vkrava4/curlson/test_coverage)
+[![Maintainability](https://api.codeclimate.com/v1/badges/ad5c424581f48734c4f0/maintainability)](https://codeclimate.com/github/vkrava4/curlson/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/ad5c424581f48734c4f0/test_coverage)](https://codeclimate.com/github/vkrava4/curlson/test_coverage)
 
 ![curlson](docs/logo_large.png)
 

@@ -1,6 +1,9 @@
 package app
 
-import "github.com/Sirupsen/logrus"
+import (
+	"github.com/Sirupsen/logrus"
+	"os"
+)
 
 type Configuration struct {
 	Logs     *LogConfiguration
@@ -14,8 +17,10 @@ type TemplateConfiguration struct {
 }
 
 type LogConfiguration struct {
-	Enabled        bool
-	VerboseEnabled bool
+	Enabled bool
+	Persist bool
+	Verbose bool
 
-	Log *logrus.Logger
+	Log     *logrus.Logger
+	Logfile *os.File
 }

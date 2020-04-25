@@ -27,7 +27,7 @@ type Validator interface {
 }
 
 type ValidatorProcessor interface {
-	Process()
+	ProcessErrors()
 }
 
 type ValidationResult struct {
@@ -49,26 +49,26 @@ type ValidatorEntity struct {
 	conf *app.Configuration
 }
 
-func (r *ValidationResult) Process() {
-	if len(r.warnMessages) > 0 {
+func (result *ValidationResult) ProcessErrors() {
+	if len(result.warnMessages) > 0 {
 		fmt.Println()
-		_, _ = redColor.Print("The following validation warnings occurred")
+		_, _ = yellowColor.Println("The following validation warnings occurred")
 
-		for _, s := range r.warnMessages {
+		for _, s := range result.warnMessages {
 			fmt.Println(yellowColor.Sprintf("   - %s", s))
 		}
 	}
 
-	if len(r.errMessages) > 0 {
+	if len(result.errMessages) > 0 {
 		fmt.Println()
 		_, _ = redColor.Println("The following validation errors occurred")
 
-		for _, s := range r.errMessages {
+		for _, s := range result.errMessages {
 			fmt.Println(redColor.Sprintf("   - %s", s))
 		}
 	}
 
-	if !r.valid {
+	if !result.valid {
 		os.Exit(1)
 	}
 }

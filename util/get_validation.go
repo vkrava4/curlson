@@ -104,15 +104,22 @@ func validatePositiveOrZero(description string, value int, result *ValidationRes
 	}
 }
 
-func validateUrlForTemplate(template string, urlAddress string, result *ValidationResult) {
+func validateEmptyTemplate(template string, urlAddress string, result *ValidationResult) bool {
 	if template == "" {
 		var _, errPrepareUrl = PrepareUrl(urlAddress, "")
 		if errPrepareUrl != nil {
 			result.valid = false
 			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, urlAddress, errPrepareUrl.Error()))
-			return
 		}
-	} else {
+		return true
+	}
+
+	return false
+}
+
+func validateUrlForTemplate(template string, urlAddress string, result *ValidationResult) {
+
+	if !validateEmptyTemplate(template, urlAddress, result) {
 		var absTemplatePath, errAbsFile = filepath.Abs(template)
 		if errAbsFile != nil {
 			result.valid = false
@@ -125,7 +132,6 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 			if errOpenFile != nil {
 				result.valid = false
 				result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
-				return
 			} else {
 				var templateSize, errValidateUrl = validateUrlForExistingTemplate(templateFile, urlAddress, result.warnMessages)
 				_ = templateFile.Close()
@@ -133,7 +139,6 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 				if errValidateUrl != nil {
 					result.valid = false
 					result.errMessages = append(result.errMessages, errValidateUrl.Error())
-					return
 				}
 
 				if templateSize > 0 && result.valid && result.conf != nil {
@@ -146,7 +151,6 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 		} else {
 			result.valid = false
 			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplateNotFound, template))
-			return
 		}
 	}
 }

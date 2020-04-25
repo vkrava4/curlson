@@ -46,6 +46,10 @@ func ShutdownLogs(config *app.LogConfiguration) {
 			var _ = os.Remove(config.Logfile.Name())
 		}
 	}
+
+	config.Log = nil
+	config.Enabled = false
+	config.Logfile = nil
 }
 
 func InfoLog(s string, config *app.LogConfiguration) {

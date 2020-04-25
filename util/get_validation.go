@@ -104,52 +104,54 @@ func validatePositiveOrZero(description string, value int, result *ValidationRes
 	}
 }
 
-func validateUrlForTemplate(template string, urlAddress string, result *ValidationResult) {
+func validateEmptyTemplate(template string, urlAddress string, result *ValidationResult) bool {
 	if template == "" {
 		var _, errPrepareUrl = PrepareUrl(urlAddress, "")
 		if errPrepareUrl != nil {
 			result.valid = false
 			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, urlAddress, errPrepareUrl.Error()))
-			return
 		}
-
-		return
+		return true
 	}
 
-	var absTemplatePath, errAbsFile = filepath.Abs(template)
-	if errAbsFile != nil {
-		result.valid = false
-		result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplatePathInvalidWithReason, template, errAbsFile.Error()))
-		return
-	}
+	return false
+}
 
-	if fileExists(absTemplatePath) {
-		var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, filesMode)
-		if errOpenFile != nil {
+func validateUrlForTemplate(template string, urlAddress string, result *ValidationResult) {
+
+	if !validateEmptyTemplate(template, urlAddress, result) {
+		var absTemplatePath, errAbsFile = filepath.Abs(template)
+		if errAbsFile != nil {
 			result.valid = false
-			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplatePathInvalidWithReason, template, errAbsFile.Error()))
 			return
-		} else {
-			var templateSize, errValidateUrl = validateUrlForExistingTemplate(templateFile, urlAddress, result.warnMessages)
-			_ = templateFile.Close()
-
-			if errValidateUrl != nil {
-				result.valid = false
-				result.errMessages = append(result.errMessages, errValidateUrl.Error())
-				return
-			}
-
-			if templateSize > 0 && result.valid && result.conf != nil {
-				result.conf.Template.Enabled = true
-				result.conf.Template.Path = absTemplatePath
-				result.conf.Template.Size = templateSize
-
-			}
 		}
-	} else {
-		result.valid = false
-		result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplateNotFound, template))
-		return
+
+		if fileExists(absTemplatePath) {
+			var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, filesMode)
+			if errOpenFile != nil {
+				result.valid = false
+				result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
+			} else {
+				var templateSize, errValidateUrl = validateUrlForExistingTemplate(templateFile, urlAddress, result.warnMessages)
+				_ = templateFile.Close()
+
+				if errValidateUrl != nil {
+					result.valid = false
+					result.errMessages = append(result.errMessages, errValidateUrl.Error())
+				}
+
+				if templateSize > 0 && result.valid && result.conf != nil {
+					result.conf.Template.Enabled = true
+					result.conf.Template.Path = absTemplatePath
+					result.conf.Template.Size = templateSize
+
+				}
+			}
+		} else {
+			result.valid = false
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgTemplateNotFound, template))
+		}
 	}
 }
 

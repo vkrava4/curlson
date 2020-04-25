@@ -120,49 +120,22 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 			return
 		}
 
-		if FileExists(absTemplatePath) {
+		if fileExists(absTemplatePath) {
 			var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, filesMode)
 			if errOpenFile != nil {
 				result.valid = false
 				result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
 				return
 			} else {
-				var templateSize = 0
-				if !ContainsTemplatePlaceholders(urlAddress) {
-					result.warnMessages = append(result.warnMessages, "")
-				} else {
-					var reader = bufio.NewReader(templateFile)
-					for {
-						var line, errReadLine = reader.ReadString(filesEndLineDelimiter)
+				var templateSize, errValidateUrl = validateUrlForExistingTemplate(templateFile, urlAddress, result.warnMessages)
+				_ = templateFile.Close()
 
-						switch {
-						case errReadLine == io.EOF:
-							break
-
-						case errReadLine != nil:
-							result.valid = false
-							templateSize = -1
-							break
-						}
-
-						if len(line) == 0 {
-							break
-						} else {
-							line = strings.TrimSuffix(line, string(filesEndLineDelimiter))
-							var _, errPrepareUrl = PrepareUrl(urlAddress, line)
-
-							if errPrepareUrl != nil {
-								result.valid = false
-								result.errMessages = append(result.errMessages, errPrepareUrl.Error())
-								break
-							}
-
-							templateSize++
-						}
-					}
+				if errValidateUrl != nil {
+					result.valid = false
+					result.errMessages = append(result.errMessages, errValidateUrl.Error())
+					return
 				}
 
-				_ = templateFile.Close()
 				if templateSize > 0 && result.valid && result.conf != nil {
 					result.conf.Template.Enabled = true
 					result.conf.Template.Path = absTemplatePath
@@ -176,4 +149,38 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 			return
 		}
 	}
+}
+
+func validateUrlForExistingTemplate(templateFile *os.File, urlAddress string, warnMessages []string) (int, error) {
+	var templateSize = 0
+	if !ContainsTemplatePlaceholders(urlAddress) {
+		warnMessages = append(warnMessages, "")
+	} else {
+		var reader = bufio.NewReader(templateFile)
+		for {
+			var line, errReadLine = reader.ReadString(filesEndLineDelimiter)
+
+			switch {
+			case errReadLine == io.EOF:
+				break
+
+			case errReadLine != nil:
+				return -1, errReadLine
+			}
+
+			if len(line) == 0 {
+				break
+			} else {
+				line = strings.TrimSuffix(line, string(filesEndLineDelimiter))
+				var _, errPrepareUrl = PrepareUrl(urlAddress, line)
+
+				if errPrepareUrl != nil {
+					return -1, errPrepareUrl
+				}
+
+				templateSize++
+			}
+		}
+	}
+	return templateSize, nil
 }

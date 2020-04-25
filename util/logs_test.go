@@ -13,7 +13,7 @@ func TestSetupLogs(t *testing.T) {
 		Enabled: false,
 		Persist: false,
 		Verbose: false,
-		Log:     logrus.New(),
+		Log:     logrus.StandardLogger(),
 		Logfile: nil,
 	}
 
@@ -36,7 +36,7 @@ func TestShutdownLogsAndRename(t *testing.T) {
 		Enabled: false,
 		Persist: true,
 		Verbose: false,
-		Log:     logrus.New(),
+		Log:     logrus.StandardLogger(),
 		Logfile: nil,
 	}
 
@@ -70,7 +70,7 @@ func TestShutdownLogsAndRemove(t *testing.T) {
 		Enabled: false,
 		Persist: false,
 		Verbose: false,
-		Log:     logrus.New(),
+		Log:     logrus.StandardLogger(),
 		Logfile: nil,
 	}
 
@@ -92,6 +92,33 @@ func TestShutdownLogsAndRemove(t *testing.T) {
 	if !os.IsNotExist(infoErr) {
 		t.Errorf("File should be removed: %s", logfileNameToBeRemoved)
 	}
+}
+
+func TestWarnLogIfEnabled(t *testing.T) {
+	var givenConfig = &app.LogConfiguration{
+		Enabled: true,
+		Log:     logrus.StandardLogger(),
+	}
+
+	WarnLog("Test", givenConfig)
+}
+
+func TestErrorLogIfEnabled(t *testing.T) {
+	var givenConfig = &app.LogConfiguration{
+		Enabled: true,
+		Log:     logrus.StandardLogger(),
+	}
+
+	ErrorLog("Test", givenConfig)
+}
+
+func TestInfoLogIfEnabled(t *testing.T) {
+	var givenConfig = &app.LogConfiguration{
+		Enabled: true,
+		Log:     logrus.StandardLogger(),
+	}
+
+	InfoLog("Test", givenConfig)
 }
 
 func cleanup(file string) {

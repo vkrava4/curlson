@@ -21,12 +21,10 @@ import (
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/vbauerster/mpb"
-	"github.com/vbauerster/mpb/decor"
 	"github.com/vkrava4/curlson/app"
+	"github.com/vkrava4/curlson/ui"
 	"github.com/vkrava4/curlson/util"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -70,7 +68,6 @@ var getCmd = &cobra.Command{
 }
 
 var yellowColor = color.New(color.FgYellow)
-var greenColor = color.New(color.FgGreen)
 
 func init() {
 	rootCmd.AddCommand(getCmd)
@@ -87,49 +84,24 @@ func init() {
 func runGet(url string) {
 	var errSetupLogs = util.SetupLogs(appConf.Logs)
 	defer util.ShutdownLogs(appConf.Logs)
-	if errSetupLogs != nil {
+	if errSetupLogs != nil && verbose {
 		_, _ = yellowColor.Println(fmt.Sprintf("Unable to setup log file. Reason: %s", errSetupLogs.Error()))
 	}
 
-	util.InfoLog(fmt.Sprintf("Setting up GET execution to URL address %s with threads = %d, amount of requests = %d, sleep millis timeout = %d", url, threads, count, sleepMs), appConf.Logs)
-
-	var executionResults = make([]int, threads)
-	var waitGroup sync.WaitGroup
-	var multiProgress = mpb.New(mpb.WithWaitGroup(&waitGroup))
-	waitGroup.Add(threads)
-
-	var linesCount = util.CountLines(template, appConf.Template.Enabled)
-	for i := 0; i < len(executionResults); i++ {
-		util.InfoLog(fmt.Sprintf("Setting up new thread with id: %d", i), appConf.Logs)
-		go ThreadStart(i, url, executionResults, multiProgress, &waitGroup, linesCount)
-		util.InfoLog(fmt.Sprintf("Thread with id: %d successfully started", i), appConf.Logs)
+	var progressWrapper = ui.InitMultiProgress(threads, count)
+	for i := 0; i < threads; i++ {
+		go ThreadStart(i, url, progressWrapper, appConf.Template.Size)
 	}
 
-	MonitorActivity(executionResults)
-	multiProgress.Wait()
-
+	progressWrapper.WaitForCompletion()
 }
 
-func ThreadStart(threadId int, url string, executionResults []int, multiProgress *mpb.Progress, waitGroup *sync.WaitGroup, linesCount int) {
-	var threadDescription = yellowColor.Sprintf("Thread #%-4d", threadId)
-
-	var onCompleteDecorator = decor.OnComplete(
-		decor.EwmaETA(decor.ET_STYLE_GO, 10),
-		greenColor.Sprintf("DONE"),
-	)
-
-	var progress = multiProgress.AddBar(int64(count),
-		mpb.BarStyle("╢▌▌ ╟"),
-		mpb.PrependDecorators(
-			decor.Name(threadDescription),
-			decor.Percentage(decor.WCSyncSpace),
-		),
-		mpb.AppendDecorators(onCompleteDecorator),
-	)
-	defer waitGroup.Done()
+func ThreadStart(threadID int, url string, progressWrapper *ui.ProgressWrapper, linesCount int) {
+	progressWrapper.AddBar(threadID)
+	defer progressWrapper.DoneExecution()
 
 	var maxExecutionEndTime = time.Now().Add(time.Second * time.Duration(maxDuration))
-	util.InfoLog(fmt.Sprintf("Determined maximum execution duration time: %#v for thread with id: %d", maxExecutionEndTime, threadId), appConf.Logs)
+	util.InfoLog(fmt.Sprintf("Determined maximum execution duration time: %#v for thread with id: %d", maxExecutionEndTime, threadID), appConf.Logs)
 
 	for i := 0; i < count; i++ {
 		var requestStartTime = time.Now()
@@ -140,7 +112,7 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 			var updatedUrl, errPrepareUrl = util.PrepareUrl(url, templateLine)
 			if errPrepareUrl != nil {
 				util.ErrorLog("Can not make GET request with broken URL. Skipping this iteration", appConf.Logs)
-				progress.IncrBy(1, time.Since(requestStartTime))
+				progressWrapper.Increment(threadID, time.Since(requestStartTime))
 				continue
 			}
 
@@ -152,43 +124,24 @@ func ThreadStart(threadId int, url string, executionResults []int, multiProgress
 
 		var getResponse, getResponseErr = http.Get(getUrl)
 		if getResponseErr == nil {
-			util.WarnLog(fmt.Sprintf("Received HTTP GET responce with status code: %d from address '%s' with ContentLength: %d", getResponse.StatusCode, getUrl, getResponse.ContentLength), appConf.Logs)
+			util.WarnLog(fmt.Sprintf("Received HTTP GET response with status code: %d from address '%s' with ContentLength: %d", getResponse.StatusCode, getUrl, getResponse.ContentLength), appConf.Logs)
 			_ = getResponse.Body.Close()
 		} else {
 			util.ErrorLog(fmt.Sprintf("Received an error on HTTP GET request from address: '%s' with message: %s", getUrl, getResponseErr.Error()), appConf.Logs)
 		}
 
-		progress.IncrBy(1, time.Since(requestStartTime))
+		progressWrapper.Increment(threadID, time.Since(requestStartTime))
 
 		if sleepMs > 0 {
-			util.InfoLog(fmt.Sprintf("Sleeping thread with id: %d for %d millis before the next itteration", threadId, sleepMs), appConf.Logs)
+			util.InfoLog(fmt.Sprintf("Sleeping thread with id: %d for %d millis before the next itteration", threadID, sleepMs), appConf.Logs)
 			time.Sleep(time.Millisecond * time.Duration(sleepMs))
-			util.InfoLog(fmt.Sprintf("Resumed thread with id: %d after sleeping for %d millis", threadId, sleepMs), appConf.Logs)
+			util.InfoLog(fmt.Sprintf("Resumed thread with id: %d after sleeping for %d millis", threadID, sleepMs), appConf.Logs)
 		}
 
 		if maxDuration != 0 && maxExecutionEndTime.Before(time.Now()) {
-			util.WarnLog(fmt.Sprintf("Exceeded maximum execution duration of %d second(s). Terminating execution of thread with id: %d as it did not complete before time: %s", maxDuration, threadId, maxExecutionEndTime.Format(time.RFC3339)), appConf.Logs)
-			progress.SetTotal(progress.Current(), true)
+			util.WarnLog(fmt.Sprintf("Exceeded maximum execution duration of %d second(s). Terminating execution of thread with id: %d as it did not complete before time: %s", maxDuration, threadID, maxExecutionEndTime.Format(time.RFC3339)), appConf.Logs)
+			progressWrapper.CompleteProgress(threadID)
 			break
 		}
-	}
-
-	executionResults[threadId] = 1
-}
-
-func MonitorActivity(executionResults []int) {
-	for true {
-		var RunningThreads = 0
-		for _, value := range executionResults {
-			if value == 0 {
-				RunningThreads++
-			}
-		}
-
-		if RunningThreads == 0 {
-			break
-		}
-
-		time.Sleep(time.Millisecond * time.Duration(200))
 	}
 }

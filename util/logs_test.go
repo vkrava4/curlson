@@ -13,7 +13,7 @@ func TestSetupLogs(t *testing.T) {
 		Enabled: false,
 		Persist: false,
 		Verbose: false,
-		Log:     logrus.StandardLogger(),
+		Log:     logrus.New(),
 		Logfile: nil,
 	}
 
@@ -36,7 +36,7 @@ func TestShutdownLogsAndRename(t *testing.T) {
 		Enabled: false,
 		Persist: true,
 		Verbose: false,
-		Log:     logrus.StandardLogger(),
+		Log:     logrus.New(),
 		Logfile: nil,
 	}
 
@@ -70,7 +70,7 @@ func TestShutdownLogsAndRemove(t *testing.T) {
 		Enabled: false,
 		Persist: false,
 		Verbose: false,
-		Log:     logrus.StandardLogger(),
+		Log:     logrus.New(),
 		Logfile: nil,
 	}
 
@@ -97,7 +97,7 @@ func TestShutdownLogsAndRemove(t *testing.T) {
 func TestWarnLogIfEnabled(t *testing.T) {
 	var givenConfig = &app.LogConfiguration{
 		Enabled: true,
-		Log:     logrus.StandardLogger(),
+		Log:     logrus.New(),
 	}
 
 	WarnLog("Test", givenConfig)
@@ -106,7 +106,7 @@ func TestWarnLogIfEnabled(t *testing.T) {
 func TestErrorLogIfEnabled(t *testing.T) {
 	var givenConfig = &app.LogConfiguration{
 		Enabled: true,
-		Log:     logrus.StandardLogger(),
+		Log:     logrus.New(),
 	}
 
 	ErrorLog("Test", givenConfig)
@@ -115,7 +115,7 @@ func TestErrorLogIfEnabled(t *testing.T) {
 func TestInfoLogIfEnabled(t *testing.T) {
 	var givenConfig = &app.LogConfiguration{
 		Enabled: true,
-		Log:     logrus.StandardLogger(),
+		Log:     logrus.New(),
 	}
 
 	InfoLog("Test", givenConfig)

@@ -127,7 +127,7 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 			return
 		}
 
-		if fileExists(absTemplatePath) {
+		if fileExist(absTemplatePath) {
 			var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, filesMode)
 			if errOpenFile != nil {
 				result.valid = false

@@ -11,6 +11,8 @@ import (
 var yellowColor = color.New(color.FgYellow)
 var greenColor = color.New(color.FgGreen)
 
+// A function which creates WaitGroup with optional progress components and fills
+//ProgressWrapper struct with created data
 func InitMultiProgress(threads int, count int) *ProgressWrapper {
 	var multiProgress *mpb.Progress
 	var waitGroup = &sync.WaitGroup{}
@@ -32,6 +34,9 @@ func InitMultiProgress(threads int, count int) *ProgressWrapper {
 	}
 }
 
+// Creates *mpb.Bar and adds newly created progress component to progressBars slice.
+// A threadID determines an ID of a Thread and also slice's index.
+// This scenario applicable if pw.multiProgress initialized and progress mode not silent
 func (pw *ProgressWrapper) AddBar(threadID int) {
 	if pw.multiProgress != nil && !pw.silent {
 		var threadDescription = yellowColor.Sprintf("Thread #%-4d", threadID)
@@ -53,21 +58,33 @@ func (pw *ProgressWrapper) AddBar(threadID int) {
 	}
 }
 
+// Increments a value of progress bar with ID on 1 item.
+// This scenario applicable if pw.multiProgress initialized, pw.progressBars[threadID] is present
+// and progress mode not silent
 func (pw *ProgressWrapper) Increment(threadID int, timeSince time.Duration) {
 	if pw.multiProgress != nil && !pw.silent && pw.progressBars[threadID] != nil {
 		pw.progressBars[threadID].IncrBy(1, timeSince)
 	}
 }
+
+// Done decrements the WaitGroup counter by one
 func (pw *ProgressWrapper) DoneExecution() {
 	pw.waitGroup.Done()
 }
 
+// Sets complete flag of a progress component with index at threadID to true, to trigger bar complete event now
+// This scenario applicable if pw.multiProgress initialized, pw.progressBars[threadID] is present
+// and progress mode not silent
 func (pw *ProgressWrapper) CompleteProgress(threadID int) {
 	if pw.multiProgress != nil && !pw.silent && pw.progressBars[threadID] != nil {
 		pw.progressBars[threadID].SetTotal(pw.progressBars[threadID].Current(), true)
 	}
 }
 
+// 1. Wait blocks until the WaitGroup counter is zero in silent mode.
+// OR
+// 2. Wait first waits for user provided *sync.WaitGroup, if any, then
+// waits far all bars to complete and finally shutdowns master goroutine.
 func (pw *ProgressWrapper) WaitForCompletion() {
 	if pw.multiProgress == nil && pw.silent {
 		pw.waitGroup.Wait()
@@ -76,6 +93,8 @@ func (pw *ProgressWrapper) WaitForCompletion() {
 	}
 }
 
+// ProgressWrapper structure which which contains information about execution mode (silent: true/false),
+// Progress Bars and WaitGroups and other related info
 type ProgressWrapper struct {
 	multiProgress *mpb.Progress
 	progressBars  []*mpb.Bar

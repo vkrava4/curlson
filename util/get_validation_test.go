@@ -255,7 +255,7 @@ func TestValidateEmptyTemplateAndWithEmptyUrl_WithOkOtherFlags(t *testing.T) {
 	var actualValidationResult = validatorEntity.Validate()
 
 	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
-		fmt.Sprintf(MsgUrlAddressInvalidWithReason, givenEmptyUrl, fmt.Sprintf("A string: '%s' is not valid URL", givenEmptyUrl)) {
+		fmt.Sprintf(MsgURLAddressInvalidWithReason, givenEmptyUrl, fmt.Sprintf("A string: '%s' is not valid URL", givenEmptyUrl)) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }
@@ -276,7 +276,7 @@ func TestValidateEmptyTemplateAndUrlWithPlaceholders_WithOkOtherFlags(t *testing
 	var actualValidationResult = validatorEntity.Validate()
 
 	if actualValidationResult.valid || strings.Join(actualValidationResult.errMessages, ",") !=
-		fmt.Sprintf(MsgUrlAddressInvalidWithReason, givenUrlWithPlaceholders, fmt.Sprintf("Given URL: '%s' has unresolved placeholders", givenUrlWithPlaceholders)) {
+		fmt.Sprintf(MsgURLAddressInvalidWithReason, givenUrlWithPlaceholders, fmt.Sprintf("Given URL: '%s' has unresolved placeholders", givenUrlWithPlaceholders)) {
 		t.Errorf("Unexpected validation result %v", actualValidationResult)
 	}
 }

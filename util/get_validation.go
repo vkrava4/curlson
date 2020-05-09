@@ -109,7 +109,7 @@ func validateEmptyTemplate(template string, urlAddress string, result *Validatio
 		var _, errPrepareUrl = PrepareUrl(urlAddress, "")
 		if errPrepareUrl != nil {
 			result.valid = false
-			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgUrlAddressInvalidWithReason, urlAddress, errPrepareUrl.Error()))
+			result.errMessages = append(result.errMessages, fmt.Sprintf(MsgURLAddressInvalidWithReason, urlAddress, errPrepareUrl.Error()))
 		}
 		return true
 	}
@@ -127,7 +127,7 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 			return
 		}
 
-		if fileExists(absTemplatePath) {
+		if fileExist(absTemplatePath) {
 			var templateFile, errOpenFile = os.OpenFile(template, os.O_RDONLY, filesMode)
 			if errOpenFile != nil {
 				result.valid = false

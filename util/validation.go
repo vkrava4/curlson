@@ -12,11 +12,9 @@ const (
 	MsgShouldBePositiveOrZero = "%s should be positive or equal to zero. Currently it's: '%d'"
 
 	// URL-related validation constants
-	MsgUrlAddressIsNotProvided     = "URL address value is not provided"
-	MsgUrlAddressInvalidWithReason = "Provided URL address: '%s' is invalid. Reason: %s"
+	MsgURLAddressInvalidWithReason = "Provided URL address: '%s' is invalid. Reason: %s"
 
 	// Template-related validation constants
-	MsgTemplateInvalidWithReason     = "Provided template file '%s' is invalid. Reason: %s"
 	MsgTemplatePathInvalidWithReason = "Provided template file path '%s' is invalid. Reason: %s"
 	MsgCantOpenTemplateWithReason    = "Provided template file '%s' can not be opened. Reason: %s"
 	MsgTemplateNotFound              = "Provided template file '%s' can not be found"

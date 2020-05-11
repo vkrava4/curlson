@@ -17,17 +17,25 @@ const (
 	// Template-related validation constants
 	MsgTemplatePathInvalidWithReason = "Provided template file path '%s' is invalid. Reason: %s"
 	MsgCantOpenTemplateWithReason    = "Provided template file '%s' can not be opened. Reason: %s"
+	MsgURLPlaceholdersNotFound       = "Given URL '%s' doesn't contain placeholders. Templating will be ignored"
 	MsgTemplateNotFound              = "Provided template file '%s' can not be found"
 )
 
+// Validator interface responsible for performing initial flags and templates validation
 type Validator interface {
+
+	// Validate method performs initial flags and templates validation
 	Validate() *ValidationResult
 }
 
+// ValidatorProcessor interface responsible for processing validation errors and warnings
 type ValidatorProcessor interface {
+
+	// ProcessErrors method processes validation errors and warnings
 	ProcessErrors()
 }
 
+// ValidationResult holds the information about validity of ValidatorEntity
 type ValidationResult struct {
 	valid        bool
 	errMessages  []string
@@ -36,6 +44,7 @@ type ValidationResult struct {
 	conf *app.Configuration
 }
 
+// ValidatorEntity holds the input flags and templates data
 type ValidatorEntity struct {
 	threads      int
 	requestCount int
@@ -47,23 +56,24 @@ type ValidatorEntity struct {
 	conf *app.Configuration
 }
 
+// ProcessErrors method processes validation errors and warnings for ValidationResult
 func (result *ValidationResult) ProcessErrors() {
-	if len(result.warnMessages) > 0 {
-		fmt.Println()
-		_, _ = yellowColor.Println("The following validation warnings occurred")
-
-		for _, s := range result.warnMessages {
-			fmt.Println(yellowColor.Sprintf("   - %s", s))
-		}
-	}
-
 	if len(result.errMessages) > 0 {
-		fmt.Println()
 		_, _ = redColor.Println("The following validation errors occurred")
 
 		for _, s := range result.errMessages {
 			fmt.Println(redColor.Sprintf("   - %s", s))
 		}
+		fmt.Println()
+	}
+
+	if len(result.warnMessages) > 0 {
+		_, _ = yellowColor.Println("The following validation warnings might impact an execution accuracy")
+
+		for _, s := range result.warnMessages {
+			fmt.Println(yellowColor.Sprintf("   - %s", s))
+		}
+		fmt.Println()
 	}
 
 	if !result.valid {

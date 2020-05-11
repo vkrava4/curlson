@@ -281,6 +281,39 @@ func TestValidateEmptyTemplateAndUrlWithPlaceholders_WithOkOtherFlags(t *testing
 	}
 }
 
+func TestValidateURLForExistingTemplateWithoutPlaceholders(t *testing.T) {
+	var givenPositiveThreads = 9999
+	var givenPositiveRequestCount = 1666
+	var givenFoundTemplate = "test.file"
+	var givenUrlWithoutPlaceholders = "http://localhost:1111/get"
+
+	// setup the file
+	var testFileAbsPath, _ = filepath.Abs(givenFoundTemplate)
+
+	_ = ioutil.WriteFile(testFileAbsPath, []byte("TEST,ONE\n"), filesMode)
+
+	var getValidator = &GetValidator{}
+	var appConf = &app.Configuration{}
+	var validatorEntity = getValidator.AddRequestCount(givenPositiveRequestCount).
+		AddThreads(givenPositiveThreads).
+		AddUrl(givenUrlWithoutPlaceholders).
+		AddTemplate(givenFoundTemplate).
+		WithAppConfiguration(appConf).
+		Entity()
+
+	var actualValidationResult = validatorEntity.Validate()
+
+	_ = os.Remove(testFileAbsPath)
+	if !actualValidationResult.valid || len(actualValidationResult.errMessages) > 0 {
+		t.Errorf("Unexpected validation result %v", actualValidationResult)
+	}
+
+	if strings.Join(actualValidationResult.warnMessages, ",") != fmt.Sprintf(MsgURLPlaceholdersNotFound, givenUrlWithoutPlaceholders) {
+		t.Errorf("Unexpected validation warning messages %v", actualValidationResult.warnMessages)
+	}
+
+}
+
 func TestValidateNonExistingTemplateAndUrlWithPlaceholders_WithOkOtherFlags(t *testing.T) {
 	var givenPositiveThreads = 999
 	var givenPositiveRequestCount = 666

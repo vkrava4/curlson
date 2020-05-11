@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-var yellowColor = color.New(color.FgYellow)
+var cyanColor = color.New(color.FgHiCyan)
 var greenColor = color.New(color.FgGreen)
 
 // InitMultiProgress creates WaitGroup with optional progress components and fills
@@ -39,7 +39,7 @@ func InitMultiProgress(threads int, count int) *ProgressWrapper {
 // This scenario applicable if pw.multiProgress initialized and progress mode not silent
 func (pw *ProgressWrapper) AddBar(threadID int) {
 	if pw.multiProgress != nil && !pw.silent {
-		var threadDescription = yellowColor.Sprintf("Thread #%-4d", threadID)
+		var threadDescription = cyanColor.Sprintf("Thread #%-4d", threadID)
 		var onCompleteDecorator = decor.OnComplete(
 			decor.EwmaETA(decor.ET_STYLE_GO, 10),
 			greenColor.Sprintf("DONE"),
@@ -81,7 +81,7 @@ func (pw *ProgressWrapper) CompleteProgress(threadID int) {
 	}
 }
 
-// WaitForCompletion:
+// WaitForCompletion
 // 1. Blocks until the WaitGroup counter is zero in silent mode.
 // OR
 // 2. Wait first waits for user provided *sync.WaitGroup, if any, then

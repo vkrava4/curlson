@@ -133,12 +133,12 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 				result.valid = false
 				result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
 			} else {
-				var templateSize, errValidateUrl = validateURLForExistingTemplate(templateFile, urlAddress, result)
+				var templateSize, errValidateURL = validateURLForExistingTemplate(templateFile, urlAddress, result)
 				_ = templateFile.Close()
 
-				if errValidateUrl != nil {
+				if errValidateURL != nil {
 					result.valid = false
-					result.errMessages = append(result.errMessages, errValidateUrl.Error())
+					result.errMessages = append(result.errMessages, errValidateURL.Error())
 				}
 
 				if templateSize > 0 && result.valid && result.conf != nil {

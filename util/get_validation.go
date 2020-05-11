@@ -133,12 +133,12 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 				result.valid = false
 				result.errMessages = append(result.errMessages, fmt.Sprintf(MsgCantOpenTemplateWithReason, template, errOpenFile.Error()))
 			} else {
-				var templateSize, errValidateUrl = validateUrlForExistingTemplate(templateFile, urlAddress, result.warnMessages)
+				var templateSize, errValidateURL = validateURLForExistingTemplate(templateFile, urlAddress, result)
 				_ = templateFile.Close()
 
-				if errValidateUrl != nil {
+				if errValidateURL != nil {
 					result.valid = false
-					result.errMessages = append(result.errMessages, errValidateUrl.Error())
+					result.errMessages = append(result.errMessages, errValidateURL.Error())
 				}
 
 				if templateSize > 0 && result.valid && result.conf != nil {
@@ -155,10 +155,10 @@ func validateUrlForTemplate(template string, urlAddress string, result *Validati
 	}
 }
 
-func validateUrlForExistingTemplate(templateFile *os.File, urlAddress string, warnMessages []string) (int, error) {
+func validateURLForExistingTemplate(templateFile *os.File, urlAddress string, result *ValidationResult) (int, error) {
 	var templateSize = 0
 	if !ContainsTemplatePlaceholders(urlAddress) {
-		warnMessages = append(warnMessages, "")
+		result.warnMessages = append(result.warnMessages, fmt.Sprintf(MsgURLPlaceholdersNotFound, urlAddress))
 	} else {
 		var reader = bufio.NewReader(templateFile)
 		for {
